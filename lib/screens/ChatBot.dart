@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
-class MedicalChatScreen extends StatefulWidget {
-  const MedicalChatScreen({super.key});
+class ChatBot extends StatefulWidget {
+  const ChatBot({super.key});
 
   @override
-  State<MedicalChatScreen> createState() => _MedicalChatScreenState();
+  State<ChatBot> createState() => _ChatBotState();
 }
 
-class _MedicalChatScreenState extends State<MedicalChatScreen> {
+class _ChatBotState extends State<ChatBot> {
   final List<_ChatMessage> _messages = [];
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
