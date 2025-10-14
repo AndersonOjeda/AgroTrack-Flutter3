@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import '../test/persistence_test.dart';
 
 class ChatBot extends StatefulWidget {
   const ChatBot({super.key});
@@ -259,6 +260,17 @@ class _ChatBotState extends State<ChatBot> {
         title: const Text('Chat Agrícola'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          IconButton(
+            tooltip: 'Pruebas de Persistencia',
+            icon: const Icon(Icons.storage),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => PersistenceTestPage(),
+                ),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Limpiar chat',
             icon: const Icon(Icons.delete_sweep),
