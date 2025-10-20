@@ -12,6 +12,43 @@ class EmailService {
     // Redirect URLs: agregar las URLs permitidas para redirección
   }
 
+  /// Reenvía el correo de confirmación usando la función SQL personalizada
+  static Future<Map<String, dynamic>> resendConfirmationEmailAdvanced(String email) async {
+    try {
+      // Usar la función SQL personalizada para reenvío
+      final response = await _client.rpc('resend_confirmation_email', params: {
+        'user_email': email,
+      });
+      
+      if (response != null && response['success'] == true) {
+        // Si la función SQL indica éxito, intentar el reenvío real
+        await _client.auth.resend(
+          type: OtpType.signup,
+          email: email,
+        );
+        
+        return {
+          'success': true,
+          'message': 'Correo de confirmación reenviado exitosamente',
+          'email': email,
+        };
+      } else {
+        return response ?? {
+          'success': false,
+          'error': 'Error desconocido',
+          'message': 'No se pudo procesar la solicitud',
+        };
+      }
+    } catch (e) {
+      print('Error al reenviar correo de confirmación avanzado: $e');
+      return {
+        'success': false,
+        'error': 'Error de conexión',
+        'message': 'Error al procesar la solicitud: $e',
+      };
+    }
+  }
+
   /// Reenvía el correo de confirmación
   static Future<bool> resendConfirmationEmail(String email) async {
     try {
@@ -70,6 +107,36 @@ class EmailService {
     } catch (e) {
       print('Error al verificar confirmación de email: $e');
       return false;
+    }
+  }
+
+  /// Obtiene el estado de confirmación del usuario actual usando función SQL
+  static Future<Map<String, dynamic>?> getEmailConfirmationStatusAdvanced(String email) async {
+    try {
+      final response = await _client.rpc('check_email_confirmation_status', params: {
+        'user_email': email,
+      });
+
+      if (response != null && response['success'] == true) {
+        return {
+          'email': response['email'],
+          'auth_confirmed': response['auth_confirmed'],
+          'auth_confirmed_at': response['auth_confirmed_at'],
+          'usuarios_confirmed': response['usuarios_confirmed'],
+          'usuarios_confirmed_at': response['usuarios_confirmed_at'],
+          'user_exists_in_usuarios': response['user_exists_in_usuarios'],
+          'auth_user_id': response['auth_user_id'],
+        };
+      }
+      
+      return response;
+    } catch (e) {
+      print('Error al obtener estado de confirmación avanzado: $e');
+      return {
+        'success': false,
+        'error': 'Error de conexión',
+        'message': 'Error al verificar confirmación: $e',
+      };
     }
   }
 

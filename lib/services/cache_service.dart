@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'database_service.dart';
@@ -270,12 +271,15 @@ class CacheService {
       // Precargar usuario actual
       await getCurrentUser();
       
-      // Precargar usuarios que necesitan sincronización
-      final usersNeedingSync = await _databaseService.getUsersNeedingSync();
-      for (final user in usersNeedingSync.take(10)) { // Limitar a 10
-        _setCachedUser('user_${user.email}', user);
-        if (user.id != null) {
-          _setCachedUser('user_id_${user.id}', user);
+      // En web, evitar acceso inmediato a SQLite para prevenir bloqueos
+      if (!kIsWeb) {
+        // Precargar usuarios que necesitan sincronización
+        final usersNeedingSync = await _databaseService.getUsersNeedingSync();
+        for (final user in usersNeedingSync.take(10)) { // Limitar a 10
+          _setCachedUser('user_${user.email}', user);
+          if (user.id != null) {
+            _setCachedUser('user_id_${user.id}', user);
+          }
         }
       }
       

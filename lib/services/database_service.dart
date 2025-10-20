@@ -1,6 +1,9 @@
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common/sqlite_api.dart';
 import 'package:path/path.dart';
 import '../models/user_model.dart';
+
+// Variable global para el databaseFactory
+DatabaseFactory? _databaseFactory;
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -9,6 +12,11 @@ class DatabaseService {
 
   static Database? _database;
 
+  // Método para establecer el databaseFactory
+  static void setDatabaseFactory(DatabaseFactory factory) {
+    _databaseFactory = factory;
+  }
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
@@ -16,13 +24,20 @@ class DatabaseService {
   }
 
   Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'agrotrack.db');
+    if (_databaseFactory == null) {
+      throw Exception('DatabaseFactory no ha sido inicializado. Llama a DatabaseService.setDatabaseFactory() primero.');
+    }
     
-    return await openDatabase(
+    // Para web, usar un path simple
+    String path = 'agrotrack.db';
+    
+    return await _databaseFactory!.openDatabase(
       path,
-      version: 1,
-      onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      ),
     );
   }
 
@@ -274,6 +289,20 @@ class DatabaseService {
       );
     } catch (e) {
       print('Error incrementando intentos de sincronización: $e');
+    }
+  }
+
+  Future<void> markSyncItemAsProcessed(int id) async {
+    final db = await database;
+    
+    try {
+      await db.delete(
+        'sync_queue',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    } catch (e) {
+      print('Error marcando elemento como procesado: $e');
     }
   }
 

@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../services/supabase_service.dart';
+import '../services/location_service.dart';
+import '../widgets/location_search_field.dart';
 import 'EmailConfirmationScreen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -15,6 +17,7 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nombreController = TextEditingController();
+  final _apellidoController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _telefonoController = TextEditingController();
@@ -111,7 +114,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       Position position = await Geolocator.getCurrentPosition();
       
-      // Usar geocoding para obtener el nombre del lugar más cercano
+      // Primero intentar usar nuestro servicio de ubicaciones de Colombia
+      LocationData? nearestCity = LocationService.findNearestCityByCoordinates(
+        position.latitude, 
+        position.longitude
+      );
+      
+      if (nearestCity != null) {
+        // Si encontramos una ciudad en nuestro servicio, usarla
+        _ubicacionController.text = nearestCity.fullName;
+        _showInfo('Ubicación detectada: ${nearestCity.fullName}');
+        return;
+      }
+      
+      // Si no encontramos en nuestro servicio, usar geocoding como fallback
       try {
         List<Placemark> placemarks = await placemarkFromCoordinates(
           position.latitude, 
@@ -141,39 +157,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
             locationName = place.administrativeArea!;
           }
           
-          // Construir ubicación detallada para mostrar más contexto
-          List<String> locationParts = [];
+          // Construir ubicación en formato "Ciudad, Departamento"
+          String city = place.locality ?? place.subAdministrativeArea ?? locationName;
+          String department = place.administrativeArea ?? '';
           
-          if (place.locality != null && place.locality!.isNotEmpty) {
-            locationParts.add(place.locality!);
+          if (city.isNotEmpty && department.isNotEmpty) {
+            detailedLocation = '$city, $department';
+          } else {
+            // Construir ubicación detallada para mostrar más contexto
+            List<String> locationParts = [];
+            
+            if (place.locality != null && place.locality!.isNotEmpty) {
+              locationParts.add(place.locality!);
+            }
+            if (place.subAdministrativeArea != null && 
+                place.subAdministrativeArea!.isNotEmpty && 
+                place.subAdministrativeArea != place.locality) {
+              locationParts.add(place.subAdministrativeArea!);
+            }
+            if (place.administrativeArea != null && 
+                place.administrativeArea!.isNotEmpty && 
+                place.administrativeArea != place.subAdministrativeArea) {
+              locationParts.add(place.administrativeArea!);
+            }
+            
+            detailedLocation = locationParts.join(', ');
           }
-          if (place.subAdministrativeArea != null && 
-              place.subAdministrativeArea!.isNotEmpty && 
-              place.subAdministrativeArea != place.locality) {
-            locationParts.add(place.subAdministrativeArea!);
-          }
-          if (place.administrativeArea != null && 
-              place.administrativeArea!.isNotEmpty && 
-              place.administrativeArea != place.subAdministrativeArea) {
-            locationParts.add(place.administrativeArea!);
-          }
-          if (place.country != null && place.country!.isNotEmpty) {
-            locationParts.add(place.country!);
-          }
-          
-          detailedLocation = locationParts.join(', ');
           
           // Si no se pudo obtener un nombre, usar coordenadas
-          if (locationName.isEmpty) {
-            locationName = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
-            detailedLocation = locationName;
+          if (detailedLocation.isEmpty) {
+            detailedLocation = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
           }
           
           _ubicacionController.text = detailedLocation;
           
-          // Mostrar mensaje específico sobre el pueblo/ciudad detectada
-          String puebloMasCercano = place.locality ?? place.subAdministrativeArea ?? 'ubicación';
-          _showInfo('Pueblo más cercano detectado: $puebloMasCercano');
+          // Mostrar mensaje específico sobre la ubicación detectada
+          String ciudadDetectada = city.isNotEmpty ? city : 'ubicación';
+          _showInfo('Ubicación detectada: $ciudadDetectada');
         } else {
           // Fallback a coordenadas si no hay placemarks
           _ubicacionController.text = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
@@ -246,6 +266,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text,
         data: {
           'nombre': _nombreController.text.trim(),
+          'apellido': _apellidoController.text.trim(),
           'telefono': _telefonoController.text.trim(),
           'ubicacion': _ubicacionController.text.trim(),
           'fecha_nacimiento': _fechaNacimiento!.toIso8601String(),
@@ -385,11 +406,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 32),
 
-                        // Nombre completo
+                        // Nombre
                         TextFormField(
                           controller: _nombreController,
                           decoration: InputDecoration(
-                            labelText: 'Nombre completo',
+                            labelText: 'Nombre',
                             prefixIcon: const Icon(Icons.person_outline),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -406,6 +427,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fillColor: Colors.grey.shade50,
                           ),
                           validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu nombre' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Apellido
+                        TextFormField(
+                          controller: _apellidoController,
+                          decoration: InputDecoration(
+                            labelText: 'Apellido',
+                            prefixIcon: const Icon(Icons.person_outline),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.green.shade600, width: 2),
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                          ),
+                          validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu apellido' : null,
                         ),
                         const SizedBox(height: 16),
 
@@ -597,124 +642,130 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 16),
 
                         // Tipo de agricultura
-                        DropdownButtonFormField<String>(
-                          value: _tipoAgricultura,
-                          decoration: InputDecoration(
-                            labelText: 'Tipo de agricultura',
-                            prefixIcon: Icon(
-                              _tipoAgricultura != null 
-                                ? _tipoAgriculturaOpciones.firstWhere(
-                                    (option) => option['value'] == _tipoAgricultura,
-                                    orElse: () => {'icon': Icons.eco}
-                                  )['icon']
-                                : Icons.eco,
-                              color: Colors.green.shade600,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.green.shade600, width: 2),
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey.shade50,
-                          ),
-                          items: _tipoAgriculturaOpciones.map((Map<String, dynamic> option) {
-                            return DropdownMenuItem<String>(
-                              value: option['value'],
-                              child: Container(
-                                constraints: const BoxConstraints(maxWidth: 280),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      option['icon'],
-                                      size: 20,
-                                      color: Colors.green.shade600,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            option['value'],
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                              fontSize: 14,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          Text(
-                                            option['description'],
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 2,
-                                          ),
-                                        ],
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _tipoAgricultura,
+                                decoration: InputDecoration(
+                                  labelText: 'Tipo de agricultura',
+                                  prefixIcon: Icon(
+                                    _tipoAgricultura != null 
+                                      ? _tipoAgriculturaOpciones.firstWhere(
+                                          (option) => option['value'] == _tipoAgricultura,
+                                          orElse: () => {'icon': Icons.eco}
+                                        )['icon']
+                                      : Icons.eco,
+                                    color: Colors.green.shade600,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: Colors.green.shade600, width: 2),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.grey.shade50,
+                                ),
+                                items: _tipoAgriculturaOpciones.map((Map<String, dynamic> option) {
+                                  return DropdownMenuItem<String>(
+                                    value: option['value'],
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      child: Text(
+                                        option['value'],
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
                                       ),
                                     ),
-                                  ],
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    _tipoAgricultura = newValue;
+                                  });
+                                },
+                                validator: (v) => v == null ? 'Selecciona el tipo de agricultura' : null,
+                                isExpanded: true,
+                                menuMaxHeight: 300,
+                                itemHeight: null, // Altura dinámica automática
+                                dropdownColor: Colors.white,
+                                style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 14,
                                 ),
                               ),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              _tipoAgricultura = newValue;
-                            });
-                          },
-                          validator: (v) => v == null ? 'Selecciona el tipo de agricultura' : null,
-                          isExpanded: true,
-                          menuMaxHeight: 300,
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: () => _mostrarDefinicionesAgricultura(),
+                              icon: const Icon(
+                                Icons.help_outline,
+                                color: Colors.green,
+                                size: 24,
+                              ),
+                              tooltip: 'Ver definiciones de tipos de agricultura',
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.green.shade50,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
 
                         // Ubicación
-                        TextFormField(
+                        LocationSearchField(
                           controller: _ubicacionController,
-                          decoration: InputDecoration(
-                            labelText: 'Ubicación',
-                            prefixIcon: const Icon(Icons.location_on_outlined),
-                            suffixIcon: _isLoadingLocation
-                                ? const Padding(
-                                    padding: EdgeInsets.all(12.0),
-                                    child: SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    ),
-                                  )
-                                : IconButton(
-                                    icon: const Icon(Icons.my_location),
-                                    onPressed: _getCurrentLocation,
-                                    tooltip: 'Obtener ubicación actual',
-                                  ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.green.shade600, width: 2),
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey.shade50,
-                          ),
-                          validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu ubicación' : null,
+                          labelText: 'Ubicación',
+                          hintText: 'Buscar ciudad y departamento (ej: Pasto, Nariño)',
+                          validator: (v) => (v == null || v.isEmpty) ? 'Selecciona tu ubicación' : null,
+                          onLocationSelected: () {
+                            // Opcional: agregar lógica adicional cuando se selecciona una ubicación
+                          },
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 8),
+                        
+                        // Botón para obtener ubicación actual
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _isLoadingLocation ? null : _getCurrentLocation,
+                                icon: _isLoadingLocation
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.my_location),
+                                label: Text(_isLoadingLocation 
+                                    ? 'Obteniendo ubicación...' 
+                                    : 'Usar mi ubicación actual'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.green.shade600,
+                                  side: BorderSide(color: Colors.green.shade600),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
 
                         // Botón de registro
                         SizedBox(
@@ -775,5 +826,110 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
     );
+  }
+
+  void _mostrarDefinicionesAgricultura() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Tipos de Agricultura',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+            ),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _tipoAgriculturaOpciones.length,
+              itemBuilder: (context, index) {
+                final tipo = _tipoAgriculturaOpciones[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              tipo['icon'],
+                              color: Colors.green,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                tipo['value'],
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getDefinicionCompleta(tipo['value']),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cerrar',
+                style: TextStyle(color: Colors.green),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _getDefinicionCompleta(String tipoAgricultura) {
+    switch (tipoAgricultura) {
+      case 'Agricultura orgánica':
+        return 'Sistema de producción que evita el uso de fertilizantes sintéticos, pesticidas, reguladores de crecimiento y aditivos para el ganado. Se basa en el uso de abonos orgánicos, rotación de cultivos y control biológico de plagas para mantener la fertilidad del suelo y controlar las plagas.';
+      
+      case 'Agricultura convencional':
+        return 'Método de agricultura que utiliza fertilizantes sintéticos, pesticidas químicos y técnicas modernas de mecanización. Es el sistema más común y busca maximizar la producción mediante el uso de tecnología y productos químicos aprobados.';
+      
+      case 'Agricultura hidropónica':
+        return 'Técnica de cultivo que no utiliza suelo, sino que las plantas crecen en soluciones nutritivas líquidas. Permite un control preciso de los nutrientes y puede realizarse en espacios reducidos con mayor eficiencia en el uso del agua.';
+      
+      case 'Agricultura de precisión':
+        return 'Sistema de manejo agrícola que utiliza tecnologías como GPS, sensores, drones y análisis de datos para optimizar el rendimiento de los cultivos. Permite aplicar insumos de manera variable según las necesidades específicas de cada zona del campo.';
+      
+      case 'Permacultura':
+        return 'Filosofía y método de diseño que busca crear sistemas agrícolas sostenibles y autosuficientes. Se basa en principios éticos y de diseño que imitan los patrones naturales para crear ecosistemas productivos y resilientes.';
+      
+      case 'Agricultura vertical':
+        return 'Método de cultivo que utiliza estructuras verticales apiladas para producir alimentos en espacios reducidos. Comúnmente se combina con hidroponía y iluminación LED controlada, siendo ideal para áreas urbanas.';
+      
+      case 'Agroecología':
+        return 'Enfoque científico que aplica principios ecológicos al diseño y manejo de sistemas agrícolas sostenibles. Integra aspectos ambientales, sociales y económicos para crear sistemas productivos que respeten los ciclos naturales.';
+      
+      case 'Agricultura regenerativa':
+        return 'Sistema de cultivo que se enfoca en regenerar y mejorar la salud del suelo mediante prácticas como cultivos de cobertura, rotación diversa, pastoreo rotacional y minimización del laboreo. Busca capturar carbono y restaurar la biodiversidad.';
+      
+      default:
+        return 'Definición no disponible.';
+    }
   }
 }

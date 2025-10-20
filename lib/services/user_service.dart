@@ -21,6 +21,7 @@ class UserService {
     required String nombre,
     required String email,
     required String password,
+    String? apellido,
     String? telefono,
     String? ubicacion,
     String? fechaNacimiento,
@@ -43,6 +44,7 @@ class UserService {
       final user = UserModel(
         id: authResponse.user!.id,
         nombre: nombre,
+        apellido: apellido,
         email: email,
         telefono: telefono,
         ubicacion: ubicacion,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
-import 'ChatBot.dart';
+import 'DashboardScreen.dart';
 import 'LoginScreen.dart';
 
 class AuthGate extends StatelessWidget {
@@ -14,14 +14,25 @@ class AuthGate extends StatelessWidget {
         body: Center(child: Text('Configura SUPABASE_URL y ANON_KEY en .env')),
       );
     }
+
+    final client = SupabaseService.client;
     return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
+      stream: client.auth.onAuthStateChange,
       builder: (context, snapshot) {
-        final session = SupabaseService.client.auth.currentSession;
-        if (session == null) {
-          return const LoginScreen();
+        final session = client.auth.currentSession;
+
+        if (snapshot.hasError) {
+          return const Scaffold(
+            body: Center(child: Text('Error de autenticación. Intenta nuevamente')),
+          );
         }
-        return const ChatBot();
+
+        // Mientras el stream conecta, renderiza según sesión para evitar pantalla en blanco
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return session == null ? const LoginScreen() : const DashboardScreen();
+        }
+
+        return session == null ? const LoginScreen() : const DashboardScreen();
       },
     );
   }

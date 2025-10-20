@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'database_service.dart';
+import 'supabase_service.dart';
 
 class SyncService {
   static final SyncService _instance = SyncService._internal();
@@ -11,7 +13,7 @@ class SyncService {
   SyncService._internal();
 
   final DatabaseService _databaseService = DatabaseService();
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final SupabaseClient _supabase = SupabaseService.client;
   
   Timer? _syncTimer;
   bool _isSyncing = false;
@@ -100,20 +102,14 @@ class SyncService {
         try {
           final success = await _processSyncItem(item);
           if (success) {
-            await _databaseService.removeSyncItem(item['id']);
+            await _databaseService.markSyncItemAsProcessed(item['id']);
             successCount++;
           } else {
             await _databaseService.incrementSyncAttempts(item['id']);
             errorCount++;
-            
-            // Remover elementos con demasiados intentos fallidos
-            if (item['attempts'] >= 5) {
-              await _databaseService.removeSyncItem(item['id']);
-              print('Removiendo elemento con demasiados intentos fallidos: ${item['id']}');
-            }
           }
         } catch (e) {
-          print('Error procesando elemento de sincronización: $e');
+          print('Error procesando item de sincronización ${item['id']}: $e');
           await _databaseService.incrementSyncAttempts(item['id']);
           errorCount++;
         }
@@ -123,74 +119,55 @@ class SyncService {
         success: errorCount == 0,
         message: 'Subida: $successCount exitosos, $errorCount errores'
       );
-      
     } catch (e) {
-      return SyncResult(success: false, message: 'Error subiendo cambios: $e');
+      return SyncResult(success: false, message: 'Error en subida: $e');
     }
   }
 
-  // Procesar elemento individual de sincronización
+  // Procesar un item individual de sincronización
   Future<bool> _processSyncItem(Map<String, dynamic> item) async {
-    final tableName = item['table_name'];
-    final recordId = item['record_id'];
-    final operation = item['operation'];
-    
-    if (tableName == 'usuarios') {
-      return await _syncUserRecord(recordId, operation, item['data']);
+    try {
+      final tableName = item['table_name'];
+      final operation = item['operation'];
+      final data = item['data'] != null ? jsonDecode(item['data']) : null;
+
+      switch (tableName) {
+        case 'usuarios':
+          return await _syncUser(operation, data);
+        default:
+          print('Tabla no soportada para sincronización: $tableName');
+          return false;
+      }
+    } catch (e) {
+      print('Error procesando item de sincronización: $e');
+      return false;
     }
-    
-    return false;
   }
 
-  // Sincronizar registro de usuario específico
-  Future<bool> _syncUserRecord(String recordId, String operation, String? data) async {
+  // Sincronizar usuario específico
+  Future<bool> _syncUser(String operation, Map<String, dynamic>? userData) async {
+    if (userData == null) return false;
+
     try {
       switch (operation) {
         case 'INSERT':
         case 'UPDATE':
-          final user = await _databaseService.getUserById(recordId) ?? 
-                      await _databaseService.getUserByEmail(recordId);
-          
-          if (user != null) {
-            final userJson = user.toJson();
-            
-            // Verificar si el usuario ya existe en Supabase
-            final existingUser = await _supabase
-                .from('usuarios')
-                .select()
-                .eq('email', user.email)
-                .maybeSingle();
-            
-            if (existingUser != null) {
-              // Actualizar usuario existente
-              await _supabase
-                  .from('usuarios')
-                  .update(userJson)
-                  .eq('email', user.email);
-            } else {
-              // Insertar nuevo usuario
-              await _supabase
-                  .from('usuarios')
-                  .insert(userJson);
-            }
-            
-            // Marcar como sincronizado localmente
-            await _databaseService.markUserAsSynced(user.id ?? user.email);
-            return true;
-          }
-          break;
-          
+          final response = await _supabase
+              .from('usuarios')
+              .upsert(userData)
+              .select();
+          return response.isNotEmpty;
         case 'DELETE':
           await _supabase
               .from('usuarios')
               .delete()
-              .eq('id', recordId);
+              .eq('id', userData['id']);
           return true;
+        default:
+          return false;
       }
-      
-      return false;
     } catch (e) {
-      print('Error sincronizando usuario $recordId: $e');
+      print('Error sincronizando usuario: $e');
       return false;
     }
   }
@@ -198,53 +175,41 @@ class SyncService {
   // Descargar cambios desde Supabase
   Future<SyncResult> _downloadRemoteChanges() async {
     try {
-      // Obtener timestamp de última sincronización
-      final lastSync = await _getLastSyncTimestamp();
-      
-      // Consultar usuarios modificados desde la última sincronización
-      final query = _supabase
-          .from('usuarios')
-          .select();
-      
-      if (lastSync != null) {
-        query.gt('updated_at', lastSync.toIso8601String());
+      if (!SupabaseService.isReady) {
+        return SyncResult(success: false, message: 'Supabase no inicializado');
       }
-      
-      final remoteUsers = await query;
+      final lastSync = await _getLastSyncTimestamp();
+      final response = await _supabase
+          .from('usuarios')
+          .select('*')
+          .gte('updated_at', lastSync.toIso8601String())
+          .order('updated_at', ascending: true);
+
       int syncedCount = 0;
-      
-      for (final userData in remoteUsers) {
+      for (final userData in response) {
         try {
-          final remoteUser = UserModel.fromJson(userData);
-          final localUser = await _databaseService.getUserByEmail(remoteUser.email);
+          final user = UserModel.fromJson(userData);
           
-          if (localUser == null) {
-            // Usuario no existe localmente, insertarlo
-            await _databaseService.insertUser(remoteUser);
-            await _databaseService.markUserAsSynced(remoteUser.id ?? remoteUser.email);
-            syncedCount++;
+          // Verificar si hay conflictos
+          final localUser = await _databaseService.getUserById(user.id!);
+          if (localUser != null && localUser.updatedAt!.isAfter(user.updatedAt!)) {
+            // Conflicto: versión local más reciente
+            await _resolveConflict(localUser, user);
           } else {
-            // Resolver conflictos si es necesario
-            final resolvedUser = await _resolveConflict(localUser, remoteUser);
-            if (resolvedUser != null) {
-              await _databaseService.updateUser(resolvedUser);
-              await _databaseService.markUserAsSynced(resolvedUser.id ?? resolvedUser.email);
-              syncedCount++;
-            }
+            // Actualizar con versión remota
+            await _databaseService.insertUser(user);
           }
+          syncedCount++;
         } catch (e) {
           print('Error procesando usuario remoto: $e');
         }
       }
-      
-      // Actualizar timestamp de última sincronización
-      await _updateLastSyncTimestamp();
-      
+
+      await _updateLastSyncTimestamp(DateTime.now());
       return SyncResult(
         success: true,
         message: 'Descarga: $syncedCount usuarios sincronizados'
       );
-      
     } catch (e) {
       return SyncResult(success: false, message: 'Error descargando cambios: $e');
     }
@@ -275,16 +240,18 @@ class SyncService {
   }
 
   // Obtener timestamp de última sincronización
-  Future<DateTime?> _getLastSyncTimestamp() async {
-    // Implementar almacenamiento de timestamp en SharedPreferences o SQLite
-    // Por simplicidad, retornamos null por ahora
-    return null;
+  Future<DateTime> _getLastSyncTimestamp() async {
+    final prefs = await SharedPreferences.getInstance();
+    final millis = prefs.getInt('last_sync_at');
+    return millis != null
+        ? DateTime.fromMillisecondsSinceEpoch(millis)
+        : DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   // Actualizar timestamp de última sincronización
-  Future<void> _updateLastSyncTimestamp() async {
-    // Implementar almacenamiento de timestamp
-    // Por ahora no hace nada
+  Future<void> _updateLastSyncTimestamp(DateTime time) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('last_sync_at', time.millisecondsSinceEpoch);
   }
 
   // Limpiar cola de sincronización
@@ -308,30 +275,21 @@ class SyncService {
     }
 
     try {
-      final userJson = user.toJson();
-      
-      // Verificar si existe en Supabase
-      final existingUser = await _supabase
-          .from('usuarios')
-          .select()
-          .eq('email', user.email)
-          .maybeSingle();
-      
-      if (existingUser != null) {
-        await _supabase
-            .from('usuarios')
-            .update(userJson)
-            .eq('email', user.email);
-      } else {
-        await _supabase
-            .from('usuarios')
-            .insert(userJson);
+      if (!SupabaseService.isReady) {
+        return SyncResult(success: false, message: 'Supabase no inicializado');
       }
-      
-      // Marcar como sincronizado
-      await _databaseService.markUserAsSynced(user.id ?? user.email);
-      
-      return SyncResult(success: true, message: 'Usuario sincronizado exitosamente');
+      final data = user.toJson();
+      final response = await _supabase
+          .from('usuarios')
+          .upsert(data)
+          .select();
+
+      if (response.isNotEmpty) {
+        await _databaseService.markUserAsSynced(user.id ?? user.email);
+        return SyncResult(success: true, message: 'Usuario sincronizado correctamente');
+      }
+
+      return SyncResult(success: false, message: 'No se pudo sincronizar el usuario');
       
     } catch (e) {
       return SyncResult(success: false, message: 'Error sincronizando usuario: $e');
