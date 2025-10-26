@@ -14,10 +14,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _emailNotifications = false;
   bool _weatherAlerts = true;
   bool _taskReminders = true;
-  
+
   String _selectedTheme = 'system'; // system, light, dark
   String _selectedLanguage = 'es'; // es, en
-  
+
   bool _biometricAuth = false;
   bool _autoSync = true;
   bool _offlineMode = false;
@@ -29,10 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         title: const Text(
           'Configuraciones',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
@@ -258,15 +255,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
@@ -281,7 +276,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
@@ -290,23 +285,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           size: 20,
         ),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(
-          fontSize: 12,
-          color: Colors.grey,
-        ),
+        style: const TextStyle(fontSize: 12, color: Colors.grey),
       ),
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: Theme.of(context).colorScheme.primary,
+        activeThumbColor: Theme.of(context).colorScheme.primary,
       ),
     );
   }
@@ -321,7 +308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
@@ -330,18 +317,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           size: 20,
         ),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(
-          fontSize: 12,
-          color: Colors.grey,
-        ),
+        style: const TextStyle(fontSize: 12, color: Colors.grey),
       ),
       trailing: const Icon(
         Icons.arrow_forward_ios,
@@ -362,7 +341,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
@@ -371,18 +350,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           size: 20,
         ),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(
-          fontSize: 12,
-          color: Colors.grey,
-        ),
+        style: const TextStyle(fontSize: 12, color: Colors.grey),
       ),
       trailing: const Icon(
         Icons.arrow_forward_ios,
@@ -421,43 +392,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Seleccionar Tema'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              RadioListTile<String>(
-                title: const Text('Seguir sistema'),
-                value: 'system',
-                groupValue: _selectedTheme,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedTheme = value!;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              RadioListTile<String>(
-                title: const Text('Tema claro'),
-                value: 'light',
-                groupValue: _selectedTheme,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedTheme = value!;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              RadioListTile<String>(
-                title: const Text('Tema oscuro'),
-                value: 'dark',
-                groupValue: _selectedTheme,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedTheme = value!;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            ],
+          content: RadioGroup<String>(
+            groupValue: _selectedTheme,
+            onChanged: (value) {
+              setState(() {
+                _selectedTheme = value!;
+              });
+              Navigator.pop(context);
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: const Text('Seguir sistema'),
+                  leading: Radio<String>(value: 'system'),
+                  onTap: () {
+                    setState(() {
+                      _selectedTheme = 'system';
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  title: const Text('Tema claro'),
+                  leading: Radio<String>(value: 'light'),
+                  onTap: () {
+                    setState(() {
+                      _selectedTheme = 'light';
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  title: const Text('Tema oscuro'),
+                  leading: Radio<String>(value: 'dark'),
+                  onTap: () {
+                    setState(() {
+                      _selectedTheme = 'dark';
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -470,32 +447,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Seleccionar Idioma'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              RadioListTile<String>(
-                title: const Text('Español'),
-                value: 'es',
-                groupValue: _selectedLanguage,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedLanguage = value!;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              RadioListTile<String>(
-                title: const Text('English'),
-                value: 'en',
-                groupValue: _selectedLanguage,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedLanguage = value!;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            ],
+          content: RadioGroup<String>(
+            groupValue: _selectedLanguage,
+            onChanged: (value) {
+              setState(() {
+                _selectedLanguage = value!;
+              });
+              Navigator.pop(context);
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: const Text('Español'),
+                  leading: Radio<String>(value: 'es'),
+                  onTap: () {
+                    setState(() {
+                      _selectedLanguage = 'es';
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  title: const Text('English'),
+                  leading: Radio<String>(value: 'en'),
+                  onTap: () {
+                    setState(() {
+                      _selectedLanguage = 'en';
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -504,13 +488,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _changePassword() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Funcionalidad de cambio de contraseña próximamente')),
+      const SnackBar(
+        content: Text('Funcionalidad de cambio de contraseña próximamente'),
+      ),
     );
   }
 
   void _showPrivacySettings() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Configuraciones de privacidad próximamente')),
+      const SnackBar(
+        content: Text('Configuraciones de privacidad próximamente'),
+      ),
     );
   }
 
@@ -520,7 +508,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Limpiar Caché'),
-          content: const Text('¿Estás seguro de que quieres eliminar todos los datos temporales?'),
+          content: const Text(
+            '¿Estás seguro de que quieres eliminar todos los datos temporales?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -543,7 +533,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _exportData() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Funcionalidad de exportación próximamente')),
+      const SnackBar(
+        content: Text('Funcionalidad de exportación próximamente'),
+      ),
     );
   }
 
@@ -558,7 +550,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         size: 48,
       ),
       children: [
-        const Text('AgroTrack es una aplicación diseñada para ayudar a los agricultores a gestionar sus cultivos de manera eficiente y sostenible.'),
+        const Text(
+          'AgroTrack es una aplicación diseñada para ayudar a los agricultores a gestionar sus cultivos de manera eficiente y sostenible.',
+        ),
       ],
     );
   }

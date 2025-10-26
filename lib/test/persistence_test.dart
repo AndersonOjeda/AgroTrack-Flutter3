@@ -6,7 +6,7 @@ import '../services/sync_service.dart';
 import '../models/user_model.dart';
 
 class PersistenceTestPage extends StatefulWidget {
-  const PersistenceTestPage({Key? key}) : super(key: key);
+  const PersistenceTestPage({super.key});
 
   @override
   State<PersistenceTestPage> createState() => _PersistenceTestPageState();

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'database_service.dart';
+import 'logger_service.dart';
 
 class CacheService {
   static final CacheService _instance = CacheService._internal();
@@ -47,7 +48,7 @@ class CacheService {
 
       return null;
     } catch (e) {
-      print('Error obteniendo usuario actual desde cache: $e');
+      LoggerService.error('Error obteniendo usuario actual desde cache', error: e);
       return null;
     }
   }
@@ -66,7 +67,7 @@ class CacheService {
       await _databaseService.insertUser(user);
       
     } catch (e) {
-      print('Error guardando usuario actual en cache: $e');
+      LoggerService.error('Error guardando usuario actual en cache', error: e);
     }
   }
 
@@ -89,7 +90,7 @@ class CacheService {
 
       return null;
     } catch (e) {
-      print('Error obteniendo usuario por email desde cache: $e');
+      LoggerService.error('Error obteniendo usuario por email desde cache', error: e);
       return null;
     }
   }
@@ -113,7 +114,7 @@ class CacheService {
 
       return null;
     } catch (e) {
-      print('Error obteniendo usuario por ID desde cache: $e');
+      LoggerService.error('Error obteniendo usuario por ID desde cache', error: e);
       return null;
     }
   }
@@ -140,7 +141,7 @@ class CacheService {
       await _databaseService.updateUser(user);
       
     } catch (e) {
-      print('Error actualizando usuario en cache: $e');
+      LoggerService.error('Error actualizando usuario en cache', error: e);
     }
   }
 
@@ -176,7 +177,7 @@ class CacheService {
       await prefs.remove(_userSessionKey);
       
     } catch (e) {
-      print('Error limpiando usuario actual: $e');
+      LoggerService.error('Error limpiando usuario actual', error: e);
     }
   }
 
@@ -191,7 +192,7 @@ class CacheService {
       
       await prefs.setString(_userSessionKey, jsonEncode(sessionData));
     } catch (e) {
-      print('Error guardando sesión de usuario: $e');
+      LoggerService.error('Error guardando sesión de usuario', error: e);
     }
   }
 
@@ -214,7 +215,7 @@ class CacheService {
       
       return null;
     } catch (e) {
-      print('Error obteniendo sesión de usuario: $e');
+      LoggerService.error('Error obteniendo sesión de usuario', error: e);
       return null;
     }
   }
@@ -225,7 +226,7 @@ class CacheService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_lastSyncTimestampKey, timestamp.toIso8601String());
     } catch (e) {
-      print('Error guardando timestamp de sincronización: $e');
+      LoggerService.error('Error guardando timestamp de sincronización', error: e);
     }
   }
 
@@ -240,7 +241,7 @@ class CacheService {
       
       return null;
     } catch (e) {
-      print('Error obteniendo timestamp de sincronización: $e');
+      LoggerService.error('Error obteniendo timestamp de sincronización', error: e);
       return null;
     }
   }
@@ -251,7 +252,7 @@ class CacheService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_offlineModeKey, isOffline);
     } catch (e) {
-      print('Error configurando modo offline: $e');
+      LoggerService.error('Error configurando modo offline', error: e);
     }
   }
 
@@ -260,7 +261,7 @@ class CacheService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getBool(_offlineModeKey) ?? false;
     } catch (e) {
-      print('Error obteniendo modo offline: $e');
+      LoggerService.error('Error obteniendo modo offline', error: e);
       return false;
     }
   }
@@ -284,7 +285,7 @@ class CacheService {
       }
       
     } catch (e) {
-      print('Error precargando datos: $e');
+      LoggerService.error('Error precargando datos', error: e);
     }
   }
 
@@ -338,7 +339,7 @@ class CacheService {
       await prefs.remove(_offlineModeKey);
       
     } catch (e) {
-      print('Error limpiando todo el cache: $e');
+      LoggerService.error('Error limpiando todo el cache', error: e);
     }
   }
 

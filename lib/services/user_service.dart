@@ -3,6 +3,7 @@ import '../models/user_model.dart';
 import 'database_service.dart';
 import 'cache_service.dart';
 import 'sync_service.dart';
+import '../services/logger_service.dart';
 
 class UserService {
   static final SupabaseClient _client = Supabase.instance.client;
@@ -136,7 +137,7 @@ class UserService {
     try {
       return await _cacheService.getCurrentUser();
     } catch (e) {
-      print('Error obteniendo usuario actual: $e');
+      LoggerService.error('Error obteniendo usuario actual', error: e);
       return null;
     }
   }
@@ -153,8 +154,9 @@ class UserService {
       await _databaseService.updateUser(userWithTimestamp);
       await _cacheService.updateUserCache(userWithTimestamp);
 
-      // 2. Intentar sincronizar inmediatamente
-      await _syncService.forceSyncUser(userWithTimestamp);
+      // 2. Intentar sincronizar inmediatamente (no bloquear)
+      // Ejecutar sin await para no dejar la UI cargando
+      _syncService.forceSyncUser(userWithTimestamp);
 
       return userWithTimestamp;
     } catch (e) {
@@ -175,7 +177,7 @@ class UserService {
 
       return response.map<UserModel>((data) => UserModel.fromJson(data)).toList();
     } catch (e) {
-      print('Error en búsqueda remota: $e');
+      LoggerService.error('Error en búsqueda remota', error: e);
       // Retornar lista vacía si hay error
       return [];
     }
@@ -192,7 +194,7 @@ class UserService {
 
       return response.map<UserModel>((data) => UserModel.fromJson(data)).toList();
     } catch (e) {
-      print('Error obteniendo usuarios por ubicación: $e');
+      LoggerService.error('Error obteniendo usuarios por ubicación', error: e);
       return [];
     }
   }

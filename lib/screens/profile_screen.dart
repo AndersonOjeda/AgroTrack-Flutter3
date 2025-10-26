@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/user_model.dart';
 import '../services/profile_service.dart';
 import '../services/user_service.dart';
-import '../models/user_model.dart';
-import 'EditProfileScreen.dart';
-import 'SettingsScreen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -27,7 +25,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final user = await ProfileService.getCurrentUser();
       final stats = await ProfileService.getUserStats();
-      
+
       if (mounted) {
         setState(() {
           _currentUser = user;
@@ -60,18 +58,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         appBar: AppBar(
           title: const Text(
             'Mi Perfil',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
           ),
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
           elevation: 0,
         ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -81,10 +74,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         appBar: AppBar(
           title: const Text(
             'Mi Perfil',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
           ),
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
@@ -103,10 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: const Text(
           'Mi Perfil',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
@@ -115,7 +102,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () async {
-              final result = await Navigator.pushNamed(context, '/edit-profile');
+              final result = await Navigator.pushNamed(
+                context,
+                '/edit-profile',
+              );
               if (result == true) {
                 _refreshProfile();
               }
@@ -155,10 +145,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: CircleAvatar(
                           radius: 55,
                           backgroundColor: Colors.grey[300],
-                          backgroundImage: (_currentUser?.profileImageUrl?.isNotEmpty ?? false)
+                          backgroundImage:
+                              (_currentUser?.profileImageUrl?.isNotEmpty ??
+                                  false)
                               ? NetworkImage(_currentUser!.profileImageUrl!)
                               : null,
-                          child: (_currentUser?.profileImageUrl?.isEmpty ?? true)
+                          child:
+                              (_currentUser?.profileImageUrl?.isEmpty ?? true)
                               ? Icon(
                                   Icons.person,
                                   size: 60,
@@ -176,7 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),
@@ -210,17 +203,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   // Email del usuario
                   Text(
                     _currentUser?.email ?? 'email@ejemplo.com',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
+                    style: const TextStyle(fontSize: 16, color: Colors.white70),
                   ),
                   const SizedBox(height: 8),
                   // Completitud del perfil
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -247,9 +240,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildSectionTitle('Información Personal'),
                   const SizedBox(height: 12),
                   _buildInfoCard([
-                    _buildInfoRow(Icons.phone, 'Teléfono', _currentUser?.telefono ?? 'No especificado'),
-                    _buildInfoRow(Icons.location_on, 'Ubicación', _currentUser?.ubicacion ?? 'No especificada'),
-                    _buildInfoRow(Icons.info_outline, 'Biografía', _currentUser?.bio ?? 'Sin biografía'),
+                    _buildInfoRow(
+                      Icons.phone,
+                      'Teléfono',
+                      _currentUser?.telefono ?? 'No especificado',
+                    ),
+                    _buildInfoRow(
+                      Icons.location_on,
+                      'Ubicación',
+                      _currentUser?.ubicacion ?? 'No especificada',
+                    ),
+                    _buildInfoRow(
+                      Icons.info_outline,
+                      'Biografía',
+                      _currentUser?.bio ?? 'Sin biografía',
+                    ),
                   ]),
 
                   const SizedBox(height: 24),
@@ -269,7 +274,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Icons.notifications,
                       'Notificaciones',
                       'Gestionar alertas y recordatorios',
-                      () => Navigator.pushNamed(context, '/notifications-settings'),
+                      () => Navigator.pushNamed(
+                        context,
+                        '/notifications-settings',
+                      ),
                     ),
                     _buildSettingsTile(
                       Icons.palette,
@@ -352,15 +360,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
@@ -369,11 +375,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: Theme.of(context).colorScheme.primary,
-            size: 20,
-          ),
+          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -390,10 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
+                  style: const TextStyle(fontSize: 16, color: Colors.black87),
                 ),
               ],
             ),
@@ -410,24 +409,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
-  Widget _buildSettingsTile(IconData icon, String title, String subtitle, VoidCallback onTap) {
+  Widget _buildSettingsTile(
+    IconData icon,
+    String title,
+    String subtitle,
+    VoidCallback onTap,
+  ) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
@@ -436,18 +438,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           size: 20,
         ),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(
-          fontSize: 12,
-          color: Colors.grey,
-        ),
+        style: const TextStyle(fontSize: 12, color: Colors.grey),
       ),
       trailing: const Icon(
         Icons.arrow_forward_ios,
@@ -458,12 +452,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, [Color? color]) {
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon, [
+    Color? color,
+  ]) {
     final itemColor = color ?? Theme.of(context).colorScheme.primary;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: itemColor.withOpacity(0.1),
+        color: itemColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -481,10 +480,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
             textAlign: TextAlign.center,
           ),
         ],
@@ -499,43 +495,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
-  Widget _buildActionTile(IconData icon, String title, Color color, VoidCallback onTap) {
+  Widget _buildActionTile(
+    IconData icon,
+    String title,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(
-          icon,
-          color: color,
-          size: 20,
-        ),
+        child: Icon(icon, color: color, size: 20),
       ),
       title: Text(
         title,
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
+        style: TextStyle(fontWeight: FontWeight.w600, color: color),
       ),
-      trailing: const Icon(
+      trailing: Icon(
         Icons.arrow_forward_ios,
         size: 16,
-        color: Colors.grey,
+        color: Colors.grey.withValues(alpha: 0.1),
       ),
       onTap: onTap,
     );
@@ -549,7 +541,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -633,7 +625,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if ((_currentUser?.profileImageUrl?.isNotEmpty ?? false))
                 ListTile(
                   leading: const Icon(Icons.delete, color: Colors.red),
-                  title: const Text('Eliminar foto', style: TextStyle(color: Colors.red)),
+                  title: const Text(
+                    'Eliminar foto',
+                    style: TextStyle(color: Colors.red),
+                  ),
                   onTap: () {
                     Navigator.pop(context);
                     _removePhoto();
@@ -663,11 +658,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _removePhoto() async {
     try {
       // Actualizar en el servicio
-      await ProfileService.updateProfile(_currentUser!.copyWith(profileImageUrl: ''));
-      
+      await ProfileService.updateProfile(
+        _currentUser!.copyWith(profileImageUrl: ''),
+      );
+
       // Refrescar datos
       await _refreshProfile();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Foto de perfil eliminada')),
@@ -675,9 +672,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al eliminar foto: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al eliminar foto: $e')));
       }
     }
   }
@@ -696,26 +693,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             TextButton(
               onPressed: () async {
-                Navigator.pop(context);
+                final navigator = Navigator.of(context);
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                navigator.pop();
                 try {
                   // Cerrar sesión usando UserService
                   await UserService.signOut();
                   // Navegar a la pantalla de login
                   if (mounted) {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/', 
-                      (route) => false,
-                    );
+                    navigator.pushNamedAndRemoveUntil('/', (route) => false);
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    scaffoldMessenger.showSnackBar(
                       SnackBar(content: Text('Error al cerrar sesión: $e')),
                     );
                   }
                 }
               },
-              child: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
+              child: const Text(
+                'Cerrar Sesión',
+                style: TextStyle(color: Colors.red),
+              ),
             ),
           ],
         );

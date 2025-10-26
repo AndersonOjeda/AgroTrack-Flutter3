@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
-import 'RegisterScreen.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,27 +10,28 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
-  
+
   // Animation controllers
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late AnimationController _scaleController;
-  
+
   // Animations
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _scaleAnimation;
-  
+
   // Focus nodes for better UX
   final _emailFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
-  
+
   // Form validation states
   bool _emailValid = true;
   bool _passwordValid = true;
@@ -59,10 +60,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+        );
 
     // Scale animation for buttons
     _scaleController = AnimationController(
@@ -84,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         _validateEmail(_emailController.text);
       }
     });
-    
+
     _passwordFocusNode.addListener(() {
       if (!_passwordFocusNode.hasFocus) {
         _validatePassword(_passwordController.text);
@@ -126,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     // Validate form
     _validateEmail(_emailController.text);
     _validatePassword(_passwordController.text);
-    
+
     if (!_emailValid || !_passwordValid) {
       _showError('Por favor corrige los errores en el formulario');
       return;
@@ -138,19 +139,18 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     });
 
     setState(() => _isLoading = true);
-    
+
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-    
+
     try {
       await SupabaseService.client.auth.signInWithPassword(
         email: email,
         password: password,
       );
-      
+
       // Success animation
       _showSuccess('¡Bienvenido de vuelta!');
-      
     } on AuthException catch (e) {
       String errorMessage = _getLocalizedError(e.message);
       _showError(errorMessage);
@@ -275,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     position: _slideAnimation,
                     child: Card(
                       elevation: 20,
-                      shadowColor: Colors.black.withOpacity(0.3),
+                      shadowColor: Colors.black.withValues(alpha: 0.3),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
@@ -308,7 +308,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.green.withOpacity(0.3),
+                                            color: Colors.green.withValues(
+                                              alpha: 0.3,
+                                            ),
                                             blurRadius: 20,
                                             spreadRadius: 5,
                                           ),
@@ -324,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 },
                               ),
                               const SizedBox(height: 24),
-                              
+
                               // Título con animación
                               TweenAnimationBuilder<double>(
                                 tween: Tween(begin: 0.0, end: 1.0),
@@ -339,19 +341,25 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                         children: [
                                           Text(
                                             'AgroTrack',
-                                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.green.shade700,
-                                              letterSpacing: 1.2,
-                                            ),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .headlineLarge
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.green.shade700,
+                                                  letterSpacing: 1.2,
+                                                ),
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
                                             'Tu compañero en el campo',
-                                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                              color: Colors.grey.shade600,
-                                              fontStyle: FontStyle.italic,
-                                            ),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge
+                                                ?.copyWith(
+                                                  color: Colors.grey.shade600,
+                                                  fontStyle: FontStyle.italic,
+                                                ),
                                           ),
                                         ],
                                       ),
@@ -360,7 +368,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 },
                               ),
                               const SizedBox(height: 40),
-                              
+
                               // Campo de email mejorado
                               AnimatedContainer(
                                 duration: const Duration(milliseconds: 300),
@@ -377,10 +385,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                     hintText: 'ejemplo@correo.com',
                                     prefixIcon: Icon(
                                       Icons.email_outlined,
-                                      color: _emailValid ? Colors.green.shade600 : Colors.red.shade600,
+                                      color: _emailValid
+                                          ? Colors.green.shade600
+                                          : Colors.red.shade600,
                                     ),
-                                    suffixIcon: _emailValid && _emailController.text.isNotEmpty
-                                        ? Icon(Icons.check_circle, color: Colors.green.shade600)
+                                    suffixIcon:
+                                        _emailValid &&
+                                            _emailController.text.isNotEmpty
+                                        ? Icon(
+                                            Icons.check_circle,
+                                            color: Colors.green.shade600,
+                                          )
                                         : null,
                                     errorText: _emailError,
                                     border: OutlineInputBorder(
@@ -389,39 +404,51 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(16),
                                       borderSide: BorderSide(
-                                        color: _emailValid ? Colors.grey.shade300 : Colors.red.shade300,
+                                        color: _emailValid
+                                            ? Colors.grey.shade300
+                                            : Colors.red.shade300,
                                         width: 1.5,
                                       ),
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(16),
                                       borderSide: BorderSide(
-                                        color: _emailValid ? Colors.green.shade600 : Colors.red.shade600,
+                                        color: _emailValid
+                                            ? Colors.green.shade600
+                                            : Colors.red.shade600,
                                         width: 2.5,
                                       ),
                                     ),
                                     errorBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(16),
-                                      borderSide: BorderSide(color: Colors.red.shade600, width: 2),
+                                      borderSide: BorderSide(
+                                        color: Colors.red.shade600,
+                                        width: 2,
+                                      ),
                                     ),
                                     focusedErrorBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(16),
-                                      borderSide: BorderSide(color: Colors.red.shade600, width: 2.5),
+                                      borderSide: BorderSide(
+                                        color: Colors.red.shade600,
+                                        width: 2.5,
+                                      ),
                                     ),
                                     filled: true,
-                                    fillColor: _emailFocusNode.hasFocus 
-                                        ? Colors.green.shade50 
+                                    fillColor: _emailFocusNode.hasFocus
+                                        ? Colors.green.shade50
                                         : Colors.grey.shade50,
                                   ),
                                   keyboardType: TextInputType.emailAddress,
                                   textInputAction: TextInputAction.next,
                                   onFieldSubmitted: (_) {
-                                    FocusScope.of(context).requestFocus(_passwordFocusNode);
+                                    FocusScope.of(
+                                      context,
+                                    ).requestFocus(_passwordFocusNode);
                                   },
                                 ),
                               ),
                               const SizedBox(height: 20),
-                              
+
                               // Campo de contraseña mejorado
                               AnimatedContainer(
                                 duration: const Duration(milliseconds: 300),
@@ -438,21 +465,30 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                     hintText: 'Mínimo 6 caracteres',
                                     prefixIcon: Icon(
                                       Icons.lock_outline,
-                                      color: _passwordValid ? Colors.green.shade600 : Colors.red.shade600,
+                                      color: _passwordValid
+                                          ? Colors.green.shade600
+                                          : Colors.red.shade600,
                                     ),
                                     suffixIcon: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        if (_passwordValid && _passwordController.text.isNotEmpty)
-                                          Icon(Icons.check_circle, color: Colors.green.shade600),
+                                        if (_passwordValid &&
+                                            _passwordController.text.isNotEmpty)
+                                          Icon(
+                                            Icons.check_circle,
+                                            color: Colors.green.shade600,
+                                          ),
                                         IconButton(
                                           icon: Icon(
-                                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                            _obscurePassword
+                                                ? Icons.visibility_off
+                                                : Icons.visibility,
                                             color: Colors.grey.shade600,
                                           ),
                                           onPressed: () {
                                             setState(() {
-                                              _obscurePassword = !_obscurePassword;
+                                              _obscurePassword =
+                                                  !_obscurePassword;
                                             });
                                           },
                                         ),
@@ -465,28 +501,38 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(16),
                                       borderSide: BorderSide(
-                                        color: _passwordValid ? Colors.grey.shade300 : Colors.red.shade300,
+                                        color: _passwordValid
+                                            ? Colors.grey.shade300
+                                            : Colors.red.shade300,
                                         width: 1.5,
                                       ),
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(16),
                                       borderSide: BorderSide(
-                                        color: _passwordValid ? Colors.green.shade600 : Colors.red.shade600,
+                                        color: _passwordValid
+                                            ? Colors.green.shade600
+                                            : Colors.red.shade600,
                                         width: 2.5,
                                       ),
                                     ),
                                     errorBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(16),
-                                      borderSide: BorderSide(color: Colors.red.shade600, width: 2),
+                                      borderSide: BorderSide(
+                                        color: Colors.red.shade600,
+                                        width: 2,
+                                      ),
                                     ),
                                     focusedErrorBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(16),
-                                      borderSide: BorderSide(color: Colors.red.shade600, width: 2.5),
+                                      borderSide: BorderSide(
+                                        color: Colors.red.shade600,
+                                        width: 2.5,
+                                      ),
                                     ),
                                     filled: true,
-                                    fillColor: _passwordFocusNode.hasFocus 
-                                        ? Colors.green.shade50 
+                                    fillColor: _passwordFocusNode.hasFocus
+                                        ? Colors.green.shade50
                                         : Colors.grey.shade50,
                                   ),
                                   obscureText: _obscurePassword,
@@ -495,7 +541,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 ),
                               ),
                               const SizedBox(height: 32),
-                              
+
                               // Botón de iniciar sesión mejorado
                               ScaleTransition(
                                 scale: _scaleAnimation,
@@ -511,18 +557,24 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                         borderRadius: BorderRadius.circular(16),
                                       ),
                                       elevation: 8,
-                                      shadowColor: Colors.green.withOpacity(0.4),
+                                      shadowColor: Colors.green.withValues(
+                                        alpha: 0.4,
+                                      ),
                                     ),
                                     child: _isLoading
                                         ? Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
                                               SizedBox(
                                                 width: 24,
                                                 height: 24,
                                                 child: CircularProgressIndicator(
                                                   strokeWidth: 2.5,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(Colors.white),
                                                 ),
                                               ),
                                               const SizedBox(width: 16),
@@ -536,7 +588,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                             ],
                                           )
                                         : const Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
                                               Icon(Icons.login, size: 24),
                                               SizedBox(width: 12),
@@ -554,7 +607,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 ),
                               ),
                               const SizedBox(height: 24),
-                              
+
                               // Divider mejorado
                               Row(
                                 children: [
@@ -573,7 +626,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
                                     child: Text(
                                       'o',
                                       style: TextStyle(
@@ -600,7 +655,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 ],
                               ),
                               const SizedBox(height: 24),
-                              
+
                               // Botón de registro mejorado
                               SizedBox(
                                 width: double.infinity,
@@ -611,26 +666,46 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                       : () {
                                           Navigator.of(context).push(
                                             PageRouteBuilder(
-                                              pageBuilder: (context, animation, secondaryAnimation) =>
-                                                  const RegisterScreen(),
-                                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                                return SlideTransition(
-                                                  position: Tween<Offset>(
-                                                    begin: const Offset(1.0, 0.0),
-                                                    end: Offset.zero,
-                                                  ).animate(CurvedAnimation(
-                                                    parent: animation,
-                                                    curve: Curves.easeInOut,
-                                                  )),
-                                                  child: child,
-                                                );
-                                              },
+                                              pageBuilder:
+                                                  (
+                                                    context,
+                                                    animation,
+                                                    secondaryAnimation,
+                                                  ) => const RegisterScreen(),
+                                              transitionsBuilder:
+                                                  (
+                                                    context,
+                                                    animation,
+                                                    secondaryAnimation,
+                                                    child,
+                                                  ) {
+                                                    return SlideTransition(
+                                                      position:
+                                                          Tween<Offset>(
+                                                            begin: const Offset(
+                                                              1.0,
+                                                              0.0,
+                                                            ),
+                                                            end: Offset.zero,
+                                                          ).animate(
+                                                            CurvedAnimation(
+                                                              parent: animation,
+                                                              curve: Curves
+                                                                  .easeInOut,
+                                                            ),
+                                                          ),
+                                                      child: child,
+                                                    );
+                                                  },
                                             ),
                                           );
                                         },
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.green.shade600,
-                                    side: BorderSide(color: Colors.green.shade600, width: 2.5),
+                                    side: BorderSide(
+                                      color: Colors.green.shade600,
+                                      width: 2.5,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16),
                                     ),

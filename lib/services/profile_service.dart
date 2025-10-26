@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
+import 'logger_service.dart';
 import 'user_service.dart';
 
 class ProfileService {
@@ -20,7 +21,8 @@ class ProfileService {
           .from('usuarios')
           .select('*')
           .eq('auth_user_id', authUser.id)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(const Duration(seconds: 12));
 
       // 2) Fallback: buscar por email si no existe aún
       if (response == null && authUser.email != null) {
@@ -28,7 +30,8 @@ class ProfileService {
             .from('usuarios')
             .select('*')
             .eq('email', authUser.email!)
-            .maybeSingle();
+            .maybeSingle()
+            .timeout(const Duration(seconds: 12));
       }
 
       // 3) Fallback: crear registro mínimo si no existe y políticas lo permiten
@@ -44,12 +47,13 @@ class ProfileService {
         try {
           response = await _client
               .from('usuarios')
-              .insert(insertData)
+              .upsert(insertData, onConflict: 'auth_user_id')
               .select()
-              .single();
+              .maybeSingle()
+              .timeout(const Duration(seconds: 12));
         } catch (e) {
           // Si falla por RLS u otra razón, simplemente registrar y continuar
-          print('Fallo al crear registro en usuarios: $e');
+          LoggerService.error('Fallo al crear registro en usuarios', error: e);
         }
       }
 
@@ -60,7 +64,7 @@ class ProfileService {
       
       return null;
     } catch (e) {
-      print('Error obteniendo usuario actual: $e');
+      LoggerService.error('Error obteniendo usuario actual', error: e);
       return null;
     }
   }
@@ -70,30 +74,94 @@ class ProfileService {
     try {
       final session = _client.auth.currentSession;
       if (session?.user == null) return false;
+      final authUser = session!.user;
 
-      // Preparar datos para actualización
+      // Preparar datos para actualización/upsert
       final updateData = updatedUser.toJson();
-      updateData.remove('id'); // No actualizar el ID
-      updateData.remove('auth_user_id'); // No actualizar el auth_user_id
+      updateData['auth_user_id'] = authUser.id; // asegurar vínculo
+      updateData.remove('id'); // Evitar colisión con PK si es nulo
       updateData['updated_at'] = DateTime.now().toIso8601String();
 
-      // Actualizar en Supabase
-      await _client
+      // Comprobar si ya existe registro para este auth_user_id
+      final existing = await _client
           .from('usuarios')
-          .update(updateData)
-          .eq('auth_user_id', session!.user.id);
+          .select('id')
+          .eq('auth_user_id', authUser.id)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 10));
+      final hasExisting = existing != null;
+      if (!hasExisting) {
+        updateData['email'] = updatedUser.email; // requerido para inserción
+      } else {
+        updateData.remove('email'); // evitar violar unique email en update
+      }
+
+      // Normalizar tipos antes de enviar
+      final tf = updateData['tamano_finca'];
+      if (tf is String) {
+        final t = tf.trim();
+        if (t.isEmpty) {
+          updateData.remove('tamano_finca');
+        } else {
+          final parsed = double.tryParse(t);
+          if (parsed != null) {
+            updateData['tamano_finca'] = parsed;
+          } else {
+            updateData.remove('tamano_finca');
+          }
+        }
+      }
+      final fn = updateData['fecha_nacimiento'];
+      if (fn is String && fn.isNotEmpty) {
+        // Enviar sólo YYYY-MM-DD si viene en ISO
+        if (fn.length >= 10) {
+          updateData['fecha_nacimiento'] = fn.substring(0, 10);
+        }
+      }
+
+      // Upsert en Supabase (actualiza si existe, crea si falta) usando conflicto en auth_user_id
+      Map<String, dynamic>? response;
+      try {
+        response = await _client
+            .from('usuarios')
+            .upsert(updateData, onConflict: 'auth_user_id')
+            .select()
+            .maybeSingle()
+            .timeout(const Duration(seconds: 15));
+      } on PostgrestException catch (pe) {
+        // Si falla por email duplicado, intentar vincular fila existente
+        final msg = pe.message;
+        if (msg.contains('usuarios_email_key') || msg.contains('duplicate key')) {
+          await _client.rpc('link_existing_usuario_to_auth_user', params: {
+            'user_email': updatedUser.email,
+          });
+          // Reintentar upsert sin email
+          updateData.remove('email');
+          response = await _client
+              .from('usuarios')
+              .upsert(updateData, onConflict: 'auth_user_id')
+              .select()
+              .maybeSingle()
+              .timeout(const Duration(seconds: 15));
+        } else {
+          rethrow;
+        }
+      }
+
+      if (response == null) {
+        throw Exception('No se pudo actualizar/crear registro remoto');
+      }
 
       // Actualizar cache local
-      _currentUser = updatedUser.copyWith(
-        updatedAt: DateTime.now(),
-      );
+      final refreshed = UserModel.fromJson(response);
+      _currentUser = refreshed;
 
       // También actualizar en la base de datos local usando UserService
-       await UserService.updateUserProfile(updatedUser);
+      await UserService.updateUserProfile(refreshed);
 
       return true;
     } catch (e) {
-      print('Error actualizando perfil: $e');
+      LoggerService.error('Error actualizando perfil', error: e);
       return false;
     }
   }
@@ -134,7 +202,7 @@ class ProfileService {
       // Usar el método principal updateProfile
       return await updateProfile(updatedUser);
     } catch (e) {
-      print('Error actualizando perfil: $e');
+      LoggerService.error('Error actualizando perfil: $e');
       return false;
     }
   }
@@ -154,7 +222,7 @@ class ProfileService {
         'experiencia_nivel': _getExperienceLevel(user.experienciaAgricola),
       };
     } catch (e) {
-      print('Error obteniendo estadísticas: $e');
+      LoggerService.error('Error obteniendo estadísticas', error: e);
       return {};
     }
   }

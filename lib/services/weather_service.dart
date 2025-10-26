@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'logger_service.dart';
 
 class WeatherService {
-  // Para usar OpenWeatherMap necesitas registrarte en https://openweathermap.org/api
-  // y obtener una API key gratuita. Por ahora usamos una demo.
-  static const String _apiKey = 'demo_key'; // Reemplazar con tu API key real
+  // API key de OpenWeatherMap - Reemplazar con tu API key real
+  // Puedes obtener una gratis en: https://openweathermap.org/api
+  static const String _apiKey = '0bf757c4eab4ff05ccfc5d23f0a745eb';
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5';
 
   /// Obtiene datos del clima actual basado en coordenadas
@@ -22,11 +23,11 @@ class WeatherService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        print('Error en API del clima: ${response.statusCode}');
+        LoggerService.error('Error en API del clima: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('Error al obtener datos del clima: $e');
+      LoggerService.error('Error al obtener datos del clima', error: e);
       return null;
     }
   }
@@ -46,11 +47,11 @@ class WeatherService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        print('Error en API del pronóstico: ${response.statusCode}');
+        LoggerService.error('Error en API del pronóstico: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('Error al obtener pronóstico: $e');
+      LoggerService.error('Error al obtener pronóstico', error: e);
       return null;
     }
   }
@@ -191,11 +192,11 @@ class WeatherService {
           },
         };
       } else {
-        print('Error en API Open-Meteo: ${response.statusCode}');
+        LoggerService.error('Error en API Open-Meteo: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('Error al obtener datos del clima (Open-Meteo): $e');
+      LoggerService.error('Error al obtener datos del clima (Open-Meteo)', error: e);
       return null;
     }
   }
@@ -215,6 +216,246 @@ class WeatherService {
       case 96: case 99: return 'Tormenta con granizo';
       default: return 'Desconocido';
     }
+  }
+
+  /// Obtiene alertas meteorológicas para una ubicación
+  static Future<List<Map<String, dynamic>>> getWeatherAlerts({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final url = '$_baseUrl/onecall?'
+          'lat=$latitude&lon=$longitude'
+          '&appid=$_apiKey&units=metric&lang=es'
+          '&exclude=minutely';
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final alerts = data['alerts'] as List<dynamic>? ?? [];
+        
+        return alerts.map((alert) => {
+          'event': alert['event'] ?? 'Alerta meteorológica',
+          'description': alert['description'] ?? 'Sin descripción',
+          'start': alert['start'] ?? 0,
+          'end': alert['end'] ?? 0,
+          'sender_name': alert['sender_name'] ?? 'Servicio meteorológico',
+        }).toList();
+      } else {
+        LoggerService.error('Error en API de alertas: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      LoggerService.error('Error al obtener alertas meteorológicas', error: e);
+      return [];
+    }
+  }
+
+  /// Obtiene pronóstico extendido usando endpoint gratuito
+  static Future<Map<String, dynamic>?> getExtendedForecast({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      // Usar el endpoint gratuito de forecast en lugar de onecall
+      final url = '$_baseUrl/forecast?'
+          'lat=$latitude&lon=$longitude'
+          '&appid=$_apiKey&units=metric&lang=es';
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        // Transformar los datos para que sean compatibles con el formato esperado
+        return {
+          'current': {
+            'temp': data['list'][0]['main']['temp'],
+            'humidity': data['list'][0]['main']['humidity'],
+            'wind_speed': data['list'][0]['wind']['speed'],
+            'weather': data['list'][0]['weather'],
+          },
+          'daily': data['list'].take(5).map((item) => {
+            'dt': item['dt'],
+            'temp': {
+              'day': item['main']['temp'],
+              'min': item['main']['temp_min'],
+              'max': item['main']['temp_max'],
+            },
+            'weather': item['weather'],
+            'pop': item['pop'] ?? 0.0, // Probabilidad de precipitación
+          }).toList(),
+          'hourly': data['list'].take(24).toList(),
+        };
+      } else {
+        LoggerService.error('Error en API del pronóstico extendido: ${response.statusCode}');
+        // Fallback a datos básicos del clima actual
+        return await getCurrentWeather(latitude: latitude, longitude: longitude);
+      }
+    } catch (e) {
+      LoggerService.error('Error al obtener pronóstico extendido', error: e);
+      // Fallback a datos básicos del clima actual
+      return await getCurrentWeather(latitude: latitude, longitude: longitude);
+    }
+  }
+
+  /// Genera recomendaciones agrícolas basadas en el clima
+  static List<String> getAgriculturalRecommendations(Map<String, dynamic> weatherData) {
+    final recommendations = <String>[];
+    
+    if (weatherData['current'] != null) {
+      final current = weatherData['current'];
+      final temp = current['temp']?.toDouble() ?? 0.0;
+      final humidity = current['humidity']?.toInt() ?? 0;
+      final windSpeed = current['wind_speed']?.toDouble() ?? 0.0;
+      
+      // Verificar pronóstico de lluvia en las próximas 24 horas
+      bool rainExpected = false;
+      if (weatherData['hourly'] != null) {
+        final hourly = weatherData['hourly'] as List;
+        for (int i = 0; i < 24 && i < hourly.length; i++) {
+          final hour = hourly[i];
+          if (hour['weather'] != null && hour['weather'].isNotEmpty) {
+            final weatherCode = hour['weather'][0]['id'];
+            if (weatherCode >= 200 && weatherCode < 700) { // Códigos de lluvia/tormenta
+              rainExpected = true;
+              break;
+            }
+          }
+        }
+      }
+      
+      // Recomendaciones basadas en lluvia
+      if (rainExpected) {
+        recommendations.add("🌧️ Lluvia esperada en las próximas 24 horas");
+        recommendations.add("💧 Hoy no riegues, se esperan lluvias");
+        recommendations.add("🚫 Evita aplicar fertilizantes por lluvia esperada");
+        recommendations.add("🏠 Protege cultivos sensibles si es necesario");
+      }
+      
+      // Recomendaciones basadas en humedad
+      if (humidity > 80) {
+        recommendations.add("💨 Alta humedad ($humidity%) - Evita aplicar fertilizantes");
+        recommendations.add("🍄 Riesgo de hongos - Monitorea tus cultivos");
+        recommendations.add("🌬️ Asegura buena ventilación en invernaderos");
+      } else if (humidity < 30) {
+        recommendations.add("🏜️ Baja humedad ($humidity%) - Aumenta el riego");
+        recommendations.add("💦 Considera riego por aspersión para aumentar humedad");
+      }
+      
+      // Recomendaciones basadas en temperatura
+      if (temp > 35) {
+        recommendations.add("🔥 Temperatura muy alta (${temp.round()}°C) - Riega temprano");
+        recommendations.add("☂️ Proporciona sombra a cultivos sensibles");
+        recommendations.add("⏰ Evita trabajar en campo durante horas pico");
+      } else if (temp < 5) {
+        recommendations.add("❄️ Temperatura baja (${temp.round()}°C) - Protege cultivos del frío");
+        recommendations.add("🔥 Considera calefacción en invernaderos");
+        recommendations.add("🌱 Retrasa siembras de cultivos sensibles al frío");
+      } else if (temp >= 15 && temp <= 25) {
+        recommendations.add("🌡️ Temperatura ideal (${temp.round()}°C) para la mayoría de cultivos");
+        recommendations.add("🌱 Buen momento para siembras y trasplantes");
+      }
+      
+      // Recomendaciones basadas en viento
+      if (windSpeed > 10) {
+        recommendations.add("💨 Viento fuerte (${windSpeed.toStringAsFixed(1)} m/s) - Protege plantas altas");
+        recommendations.add("🚫 Evita aplicar pesticidas por viento fuerte");
+        recommendations.add("🏗️ Refuerza estructuras de soporte");
+      }
+      
+      // Recomendaciones generales si no hay condiciones especiales
+      if (recommendations.isEmpty) {
+        recommendations.add("☀️ Condiciones normales - Mantén rutina de cuidados");
+        recommendations.add("📊 Monitorea regularmente tus cultivos");
+        recommendations.add("💧 Riega según necesidades específicas de cada planta");
+      }
+    }
+    
+    return recommendations;
+  }
+
+  /// Detecta alertas automáticas basadas en condiciones meteorológicas
+  static List<Map<String, dynamic>> generateAutomaticAlerts(Map<String, dynamic> weatherData) {
+    final alerts = <Map<String, dynamic>>[];
+    
+    if (weatherData['current'] != null) {
+      final current = weatherData['current'];
+      final temp = current['temp']?.toDouble() ?? 0.0;
+      final humidity = current['humidity']?.toInt() ?? 0;
+      final windSpeed = current['wind_speed']?.toDouble() ?? 0.0;
+      
+      // Alerta por temperatura extrema
+      if (temp > 40) {
+        alerts.add({
+          'type': 'warning',
+          'title': 'Temperatura Extrema',
+          'message': 'Temperatura muy alta (${temp.round()}°C). Protege tus cultivos.',
+          'icon': '🔥',
+          'priority': 'high'
+        });
+      } else if (temp < 0) {
+        alerts.add({
+          'type': 'warning',
+          'title': 'Riesgo de Helada',
+          'message': 'Temperatura bajo cero (${temp.round()}°C). Riesgo de helada.',
+          'icon': '❄️',
+          'priority': 'high'
+        });
+      }
+      
+      // Alerta por humedad extrema
+      if (humidity > 90) {
+        alerts.add({
+          'type': 'info',
+          'title': 'Humedad Muy Alta',
+          'message': 'Humedad del $humidity%. Alto riesgo de enfermedades fúngicas.',
+          'icon': '💨',
+          'priority': 'medium'
+        });
+      }
+      
+      // Alerta por viento fuerte
+      if (windSpeed > 15) {
+        alerts.add({
+          'type': 'warning',
+          'title': 'Viento Fuerte',
+          'message': 'Vientos de ${windSpeed.toStringAsFixed(1)} m/s. Protege estructuras.',
+          'icon': '💨',
+          'priority': 'medium'
+        });
+      }
+      
+      // Verificar pronóstico de lluvia intensa
+      if (weatherData['hourly'] != null) {
+        final hourly = weatherData['hourly'] as List;
+        bool heavyRainExpected = false;
+        
+        for (int i = 0; i < 24 && i < hourly.length; i++) {
+          final hour = hourly[i];
+          if (hour['weather'] != null && hour['weather'].isNotEmpty) {
+            final weatherCode = hour['weather'][0]['id'];
+            if (weatherCode >= 500 && weatherCode < 600) { // Códigos de lluvia intensa
+              heavyRainExpected = true;
+              break;
+            }
+          }
+        }
+        
+        if (heavyRainExpected) {
+          alerts.add({
+            'type': 'info',
+            'title': 'Lluvia Intensa Esperada',
+            'message': 'Se esperan lluvias intensas en las próximas 24 horas.',
+            'icon': '🌧️',
+            'priority': 'medium'
+          });
+        }
+      }
+    }
+    
+    return alerts;
   }
 
   /// Convierte código de clima de Open-Meteo a icono

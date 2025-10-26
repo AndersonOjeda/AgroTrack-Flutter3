@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
-import 'DashboardScreen.dart';
-import 'LoginScreen.dart';
+import 'dashboard_screen.dart';
+import 'login_screen.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});

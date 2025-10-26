@@ -11,14 +11,14 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controladores para los campos de texto
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _locationController = TextEditingController();
   final _bioController = TextEditingController();
-  
+
   bool _isLoading = false;
   UserModel? _currentUser;
 
@@ -31,14 +31,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _loadUserData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final user = await ProfileService.getCurrentUser();
       if (user != null && mounted) {
         setState(() {
           _currentUser = user;
-          _nameController.text = user.nombre ?? '';
-          _emailController.text = user.email ?? '';
+          _nameController.text = user.nombre;
+          _emailController.text = user.email;
           _phoneController.text = user.telefono ?? '';
           _locationController.text = user.ubicacion ?? '';
           _bioController.text = user.bio ?? '';
@@ -46,9 +46,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error cargando datos: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error cargando datos: $e')));
       }
     } finally {
       if (mounted) {
@@ -74,10 +74,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       appBar: AppBar(
         title: const Text(
           'Editar Perfil',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
@@ -97,9 +94,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -128,11 +123,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   right: 0,
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.primary,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
+                                          color: Colors.black.withValues(
+                                            alpha: 0.2,
+                                          ),
                                           blurRadius: 4,
                                           offset: const Offset(0, 2),
                                         ),
@@ -186,15 +185,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       // Email
                       _buildTextFormField(
                         controller: _emailController,
-                        label: 'Correo electrónico',
+                        label: 'Correo electrónico (no editable aquí)',
                         icon: Icons.email_outlined,
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
+                          // El correo se gestiona desde Autenticación y no se
+                          // actualiza desde esta pantalla.
                           if (value == null || value.isEmpty) {
-                            return 'Por favor ingresa tu correo';
-                          }
-                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                            return 'Por favor ingresa un correo válido';
+                            return 'Correo no disponible';
                           }
                           return null;
                         },
@@ -261,7 +259,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 Navigator.pop(context);
                               },
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 side: BorderSide(
                                   color: Theme.of(context).colorScheme.primary,
                                 ),
@@ -280,9 +280,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _saveProfile,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 elevation: 2,
                               ),
                               child: _isLoading
@@ -291,7 +295,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       width: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
                                       ),
                                     )
                                   : const Text(
@@ -340,7 +347,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -353,10 +360,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         validator: validator,
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(
-            icon,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+          prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -367,9 +371,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             horizontal: 16,
             vertical: 16,
           ),
-          labelStyle: TextStyle(
-            color: Colors.grey[600],
-          ),
+          labelStyle: TextStyle(color: Colors.grey[600]),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
@@ -379,17 +381,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: Colors.red,
-              width: 1,
-            ),
+            borderSide: const BorderSide(color: Colors.red, width: 1),
           ),
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: Colors.red,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
           ),
         ),
       ),
@@ -419,10 +415,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 20),
               const Text(
                 'Cambiar foto de perfil',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               Row(
@@ -476,7 +469,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: (color ?? Theme.of(context).colorScheme.primary).withOpacity(0.1),
+              color: (color ?? Theme.of(context).colorScheme.primary)
+                  .withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -511,9 +505,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _removePhoto() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Foto de perfil eliminada')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Foto de perfil eliminada')));
   }
 
   void _saveProfile() async {
@@ -527,16 +521,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           // Crear usuario actualizado con los nuevos datos
           final updatedUser = _currentUser!.copyWith(
             nombre: _nameController.text.trim(),
-            email: _emailController.text.trim(),
+            // Mantener el correo del usuario autenticado; no se edita aquí
+            email: _currentUser!.email,
             telefono: _phoneController.text.trim(),
             ubicacion: _locationController.text.trim(),
             bio: _bioController.text.trim(),
           );
 
-          // Actualizar en el servicio
-          await ProfileService.updateProfile(updatedUser);
+          // Actualizar en el servicio y verificar resultado
+          final ok = await ProfileService.updateProfile(updatedUser);
 
-          if (mounted) {
+          if (!mounted) return;
+
+          if (ok) {
             // Mostrar mensaje de éxito
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -544,9 +541,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 backgroundColor: Colors.green,
               ),
             );
-
             // Volver a la pantalla anterior con resultado exitoso
             Navigator.pop(context, true);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'No se pudo actualizar el perfil. Intenta nuevamente.',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
         }
       } catch (e) {

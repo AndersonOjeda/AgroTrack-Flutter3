@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
+import 'logger_service.dart';
 
 class EmailService {
   static final SupabaseClient _client = SupabaseService.client;
@@ -40,7 +41,7 @@ class EmailService {
         };
       }
     } catch (e) {
-      print('Error al reenviar correo de confirmación avanzado: $e');
+      LoggerService.error('Error al reenviar correo de confirmación avanzado: $e');
       return {
         'success': false,
         'error': 'Error de conexión',
@@ -58,7 +59,7 @@ class EmailService {
       );
       return true;
     } catch (e) {
-      print('Error al reenviar correo de confirmación: $e');
+      LoggerService.error('Error al reenviar correo de confirmación: $e');
       return false;
     }
   }
@@ -86,7 +87,7 @@ class EmailService {
       }
       return false;
     } catch (e) {
-      print('Error al confirmar email: $e');
+      LoggerService.error('Error al confirmar email: $e');
       return false;
     }
   }
@@ -105,7 +106,7 @@ class EmailService {
 
       return response['email_confirmado'] ?? false;
     } catch (e) {
-      print('Error al verificar confirmación de email: $e');
+      LoggerService.error('Error al verificar confirmación de email: $e');
       return false;
     }
   }
@@ -131,7 +132,7 @@ class EmailService {
       
       return response;
     } catch (e) {
-      print('Error al obtener estado de confirmación avanzado: $e');
+      LoggerService.error('Error al obtener estado de confirmación avanzado: $e');
       return {
         'success': false,
         'error': 'Error de conexión',
@@ -158,7 +159,7 @@ class EmailService {
         'confirmation_date': response['fecha_confirmacion_email'],
       };
     } catch (e) {
-      print('Error al obtener estado de confirmación: $e');
+      LoggerService.error('Error al obtener estado de confirmación: $e');
       return null;
     }
   }
@@ -191,7 +192,7 @@ class EmailService {
       }
       return false;
     } catch (e) {
-      print('Error al manejar URL de confirmación: $e');
+      LoggerService.error('Error al manejar URL de confirmación: $e');
       return false;
     }
   }

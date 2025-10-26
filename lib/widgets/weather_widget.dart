@@ -7,11 +7,11 @@ class WeatherWidget extends StatefulWidget {
   final String? locationName;
 
   const WeatherWidget({
-    Key? key,
+    super.key,
     this.latitude,
     this.longitude,
     this.locationName,
-  }) : super(key: key);
+  });
 
   @override
   State<WeatherWidget> createState() => _WeatherWidgetState();
@@ -75,8 +75,76 @@ class _WeatherWidgetState extends State<WeatherWidget> {
     }
   }
 
-  String _getWeatherIcon(String? iconCode) {
-    return WeatherService.getWeatherEmoji(iconCode);
+  IconData _getWeatherIconData(String? iconCode) {
+    switch (iconCode) {
+      case '01d': // clear sky day
+        return Icons.wb_sunny;
+      case '01n': // clear sky night
+        return Icons.nights_stay;
+      case '02d': // few clouds day
+      case '02n': // few clouds night
+        return Icons.wb_cloudy;
+      case '03d':
+      case '03n': // scattered clouds
+        return Icons.cloud;
+      case '04d':
+      case '04n': // broken clouds
+        return Icons.cloud;
+      case '09d':
+      case '09n': // shower rain
+        return Icons.grain;
+      case '10d': // rain day
+      case '10n': // rain night
+        return Icons.grain;
+      case '11d':
+      case '11n': // thunderstorm
+        return Icons.flash_on;
+      case '13d':
+      case '13n': // snow
+        return Icons.ac_unit;
+      case '50d':
+      case '50n': // mist
+        return Icons.blur_on;
+      default:
+        return Icons.wb_sunny;
+    }
+  }
+
+  Color _getWeatherIconColor(String? iconCode) {
+    switch (iconCode) {
+      case '01d': // clear sky day - Sol brillante
+        return Colors.orange;
+      case '01n': // clear sky night - Luna
+        return Colors.indigo;
+      case '02d': // few clouds day - Sol con pocas nubes
+        return Colors.amber;
+      case '02n': // few clouds night - Luna con pocas nubes
+        return Colors.indigo;
+      case '03d':
+      case '03n': // scattered clouds - Nubes dispersas
+        return Colors.grey;
+      case '04d':
+      case '04n': // broken clouds - Nubes densas
+        return Colors.blueGrey;
+      case '09d':
+      case '09n': // shower rain - Lluvia ligera
+        return Colors.blue;
+      case '10d': // rain day - Lluvia con sol
+        return Colors.lightBlue;
+      case '10n': // rain night - Lluvia nocturna
+        return Colors.blue;
+      case '11d':
+      case '11n': // thunderstorm - Tormenta eléctrica
+        return Colors.deepPurple;
+      case '13d':
+      case '13n': // snow - Nieve
+        return Colors.lightBlue;
+      case '50d':
+      case '50n': // mist - Niebla
+        return Colors.grey;
+      default:
+        return Colors.orange;
+    }
   }
 
   @override
@@ -90,7 +158,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -117,7 +185,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -137,12 +205,12 @@ class _WeatherWidgetState extends State<WeatherWidget> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+             BoxShadow(
+               color: Colors.black.withValues(alpha: 0.1),
+               blurRadius: 10,
+               offset: const Offset(0, 4),
+             ),
+           ],
         ),
         child: Center(
           child: Column(
@@ -186,7 +254,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -261,21 +329,34 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                 ),
               ),
               Column(
-                children: [
-                  Text(
-                    _getWeatherIcon(iconCode),
-                    style: const TextStyle(fontSize: 48),
-                  ),
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+                 children: [
+                   Container(
+                     width: 50,
+                     height: 50,
+                     decoration: BoxDecoration(
+                       color: _getWeatherIconColor(iconCode).withValues(alpha: 0.1),
+                       borderRadius: BorderRadius.circular(12),
+                     ),
+                     child: Center(
+                       child: Icon(
+                         _getWeatherIconData(iconCode),
+                         size: 28,
+                         color: _getWeatherIconColor(iconCode),
+                       ),
+                     ),
+                   ),
+                   const SizedBox(height: 8),
+                   Text(
+                     description,
+                     style: const TextStyle(
+                       fontSize: 12,
+                       color: Colors.grey,
+                       fontWeight: FontWeight.w500,
+                     ),
+                     textAlign: TextAlign.center,
+                   ),
+                 ],
+               ),
             ],
           ),
           

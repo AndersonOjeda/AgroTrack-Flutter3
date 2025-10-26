@@ -41,21 +41,25 @@ class _DebugScreenState extends State<DebugScreen> {
     
     try {
       final result = await DebugService.createUserInDatabase();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['success'] == true 
-            ? 'Usuario creado exitosamente' 
-            : 'Error: ${result['error']}'),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['success'] == true 
+              ? 'Usuario creado exitosamente' 
+              : 'Error: ${result['error']}'),
+          ),
+        );
+      }
       
       // Refrescar diagnóstico
       await _runDiagnosis();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -104,10 +108,13 @@ class _DebugScreenState extends State<DebugScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () async {
+                            final scaffoldMessenger = ScaffoldMessenger.of(context);
                             await ProfileService.refreshUser();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Cache refrescado')),
-                            );
+                            if (mounted) {
+                              scaffoldMessenger.showSnackBar(
+                                const SnackBar(content: Text('Cache refrescado')),
+                              );
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,

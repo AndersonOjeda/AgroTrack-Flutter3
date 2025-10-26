@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/location_service.dart';
+import '../services/logger_service.dart';
 
 class LocationSearchField extends StatefulWidget {
   final TextEditingController controller;
@@ -10,14 +11,14 @@ class LocationSearchField extends StatefulWidget {
   final VoidCallback? onLocationSelected;
 
   const LocationSearchField({
-    Key? key,
+    super.key,
     required this.controller,
     this.validator,
     this.labelText = 'Ubicación',
     this.hintText = 'Buscar ciudad y departamento...',
     this.enabled = true,
     this.onLocationSelected,
-  }) : super(key: key);
+  });
 
   @override
   State<LocationSearchField> createState() => _LocationSearchFieldState();
@@ -147,7 +148,7 @@ class _LocationSearchFieldState extends State<LocationSearchField> {
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
-              print('Seleccionando ubicación: ${location.fullName}');
+              LoggerService.info('Seleccionando ubicación: ${location.fullName}');
               _selectLocation(location);
             },
             child: Container(
@@ -196,7 +197,7 @@ class _LocationSearchFieldState extends State<LocationSearchField> {
   }
 
   void _selectLocation(LocationData location) {
-    print('_selectLocation llamado con: ${location.fullName}');
+    LoggerService.info('_selectLocation llamado con: ${location.fullName}');
     widget.controller.text = location.fullName;
     setState(() {
       _searchResults.clear();
@@ -205,7 +206,7 @@ class _LocationSearchFieldState extends State<LocationSearchField> {
     _focusNode.unfocus();
     _removeOverlay();
     widget.onLocationSelected?.call();
-    print('Ubicación seleccionada y establecida: ${widget.controller.text}');
+    LoggerService.info('Ubicación seleccionada y establecida: ${widget.controller.text}');
   }
 
   @override

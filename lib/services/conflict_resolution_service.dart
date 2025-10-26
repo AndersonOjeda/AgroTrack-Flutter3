@@ -61,8 +61,8 @@ class ConflictResolutionService {
   // Detectar si hay conflicto real entre dos usuarios
   bool _hasConflict(UserModel local, UserModel remote) {
     // Si ambos tienen timestamps y son diferentes, hay potencial conflicto
-    final localUpdated = DateTime.tryParse(local.updatedAt ?? '');
-    final remoteUpdated = DateTime.tryParse(remote.updatedAt ?? '');
+    final localUpdated = local.updatedAt;
+    final remoteUpdated = remote.updatedAt;
     
     if (localUpdated != null && remoteUpdated != null) {
       // Si la diferencia es menor a 1 segundo, considerarlo como no conflicto
@@ -94,8 +94,8 @@ class ConflictResolutionService {
 
   // Resolución por último en escribir gana
   ConflictResolution _resolveByLastWrite(UserModel local, UserModel remote, List<String> conflicts) {
-    final localUpdated = DateTime.tryParse(local.updatedAt ?? '');
-    final remoteUpdated = DateTime.tryParse(remote.updatedAt ?? '');
+    final localUpdated = local.updatedAt;
+    final remoteUpdated = remote.updatedAt;
     
     UserModel winner;
     
@@ -145,18 +145,18 @@ class ConflictResolutionService {
     // Crear usuario fusionado tomando el mejor valor de cada campo
     final merged = UserModel(
       id: remote.id ?? local.id,
-      nombre: _chooseBestValue(local.nombre, remote.nombre),
+      nombre: _chooseBestValue(local.nombre, remote.nombre) ?? local.nombre,
       email: remote.email, // Email no debe cambiar
       telefono: _chooseBestValue(local.telefono, remote.telefono),
       ubicacion: _chooseBestValue(local.ubicacion, remote.ubicacion),
-      fechaNacimiento: _chooseBestValue(local.fechaNacimiento, remote.fechaNacimiento),
+      fechaNacimiento: _chooseBestDateTime(local.fechaNacimiento, remote.fechaNacimiento),
       experienciaAgricola: _chooseBestValue(local.experienciaAgricola, remote.experienciaAgricola),
       tamanoFinca: _chooseBestValue(local.tamanoFinca, remote.tamanoFinca),
       tipoAgricultura: _chooseBestValue(local.tipoAgricultura, remote.tipoAgricultura),
       emailConfirmado: remote.emailConfirmado || local.emailConfirmado, // Mantener confirmación
       createdAt: local.createdAt ?? remote.createdAt,
-      updatedAt: DateTime.now().toIso8601String(),
-      lastSyncAt: DateTime.now().toIso8601String(),
+      updatedAt: DateTime.now(),
+      lastSyncAt: DateTime.now(),
       needsSync: false,
     );
     
@@ -178,6 +178,18 @@ class ConflictResolutionService {
     
     // Si ambos tienen valor, elegir el más largo (asumiendo más información)
     if (remote!.length > local!.length) return remote;
+    return local;
+  }
+
+  // Elegir el mejor valor DateTime entre dos opciones
+  DateTime? _chooseBestDateTime(DateTime? local, DateTime? remote) {
+    // Si uno es null y el otro no, elegir el no-null
+    if (local == null && remote != null) return remote;
+    if (remote == null && local != null) return local;
+    if (local == null && remote == null) return null;
+    
+    // Si ambos tienen valor, elegir el más reciente
+    if (remote!.isAfter(local!)) return remote;
     return local;
   }
 
@@ -204,8 +216,8 @@ class ConflictResolutionService {
   ) {
     return ConflictResolution(
       resolvedUser: chosenUser.copyWith(
-        updatedAt: DateTime.now().toIso8601String(),
-        lastSyncAt: DateTime.now().toIso8601String(),
+        updatedAt: DateTime.now(),
+        lastSyncAt: DateTime.now(),
         needsSync: false,
       ),
       strategy: ConflictResolutionStrategy.manual,

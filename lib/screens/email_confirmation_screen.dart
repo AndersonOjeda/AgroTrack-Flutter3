@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import '../services/email_service.dart';
-import '../services/profile_service.dart';
 
 class EmailConfirmationScreen extends StatefulWidget {
   final String? userEmail;
   
   const EmailConfirmationScreen({
-    Key? key,
+    super.key,
     this.userEmail,
-  }) : super(key: key);
+  });
 
   @override
   State<EmailConfirmationScreen> createState() => _EmailConfirmationScreenState();

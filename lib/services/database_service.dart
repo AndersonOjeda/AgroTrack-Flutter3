@@ -1,6 +1,6 @@
-import 'package:sqflite_common/sqlite_api.dart';
-import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 import '../models/user_model.dart';
+import 'logger_service.dart';
 
 // Variable global para el databaseFactory
 DatabaseFactory? _databaseFactory;
@@ -105,7 +105,7 @@ class DatabaseService {
       
       return 1;
     } catch (e) {
-      print('Error insertando usuario: $e');
+      LoggerService.error('Error insertando usuario', error: e);
       return 0;
     }
   }
@@ -126,7 +126,7 @@ class DatabaseService {
       }
       return null;
     } catch (e) {
-      print('Error obteniendo usuario: $e');
+      LoggerService.error('Error obteniendo usuario', error: e);
       return null;
     }
   }
@@ -147,7 +147,7 @@ class DatabaseService {
       }
       return null;
     } catch (e) {
-      print('Error obteniendo usuario por ID: $e');
+      LoggerService.error('Error obteniendo usuario por ID', error: e);
       return null;
     }
   }
@@ -172,7 +172,7 @@ class DatabaseService {
       
       return result;
     } catch (e) {
-      print('Error actualizando usuario: $e');
+      LoggerService.error('Error actualizando usuario', error: e);
       return 0;
     }
   }
@@ -192,7 +192,7 @@ class DatabaseService {
       
       return result;
     } catch (e) {
-      print('Error eliminando usuario: $e');
+      LoggerService.error('Error eliminando usuario', error: e);
       return 0;
     }
   }
@@ -209,7 +209,7 @@ class DatabaseService {
 
       return List.generate(maps.length, (i) => UserModel.fromMap(maps[i]));
     } catch (e) {
-      print('Error obteniendo usuarios para sincronizar: $e');
+      LoggerService.error('Error obteniendo usuarios para sincronizar: $e');
       return [];
     }
   }
@@ -228,7 +228,7 @@ class DatabaseService {
         whereArgs: [id],
       );
     } catch (e) {
-      print('Error marcando usuario como sincronizado: $e');
+      LoggerService.error('Error marcando usuario como sincronizado: $e');
     }
   }
 
@@ -241,12 +241,12 @@ class DatabaseService {
         'table_name': tableName,
         'record_id': recordId,
         'operation': operation,
-        'data': data != null ? data.toString() : null,
+        'data': data?.toString(),
         'created_at': DateTime.now().toIso8601String(),
         'attempts': 0,
       });
     } catch (e) {
-      print('Error agregando a cola de sincronización: $e');
+      LoggerService.error('Error agregando a cola de sincronización: $e');
     }
   }
 
@@ -260,7 +260,7 @@ class DatabaseService {
         limit: 50, // Procesar en lotes
       );
     } catch (e) {
-      print('Error obteniendo elementos de sincronización: $e');
+      LoggerService.error('Error obteniendo elementos de sincronización: $e');
       return [];
     }
   }
@@ -275,7 +275,7 @@ class DatabaseService {
         whereArgs: [id],
       );
     } catch (e) {
-      print('Error removiendo elemento de sincronización: $e');
+      LoggerService.error('Error removiendo elemento de sincronización: $e');
     }
   }
 
@@ -288,7 +288,7 @@ class DatabaseService {
         [id],
       );
     } catch (e) {
-      print('Error incrementando intentos de sincronización: $e');
+      LoggerService.error('Error incrementando intentos de sincronización: $e');
     }
   }
 
@@ -302,7 +302,7 @@ class DatabaseService {
         whereArgs: [id],
       );
     } catch (e) {
-      print('Error marcando elemento como procesado: $e');
+      LoggerService.error('Error marcando elemento como procesado: $e');
     }
   }
 
@@ -314,7 +314,7 @@ class DatabaseService {
       await db.delete('usuarios');
       await db.delete('sync_queue');
     } catch (e) {
-      print('Error limpiando datos: $e');
+      LoggerService.error('Error limpiando datos', error: e);
     }
   }
 

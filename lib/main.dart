@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'screens/AuthGate.dart';
-import 'screens/ProfileScreen.dart';
-import 'screens/EditProfileScreen.dart';
-import 'screens/SettingsScreen.dart';
-import 'screens/DebugScreen.dart';
+import 'screens/auth_gate.dart';
 import 'screens/email_confirmation_screen.dart';
-import 'screens/LoginScreen.dart';
-import 'services/user_service.dart';
+import 'screens/profile_screen.dart';
+import 'screens/edit_profile_screen.dart';
+import 'screens/settings_screen.dart';
+import 'screens/debug_screen.dart';
 import 'services/database_service.dart';
 import 'services/supabase_service.dart';
+import 'services/user_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

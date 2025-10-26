@@ -422,6 +422,28 @@ grant execute on function public.update_email_confirmation_status(uuid, boolean)
 grant execute on function public.check_email_confirmation_status(varchar) to authenticated;
 
 -- =====================================================
+-- UTILIDAD: Vincular fila existente por email con el usuario autenticado
+-- =====================================================
+-- Corrige casos donde existe un registro en public.usuarios con el mismo
+-- email pero sin auth_user_id asignado (o asignado incorrectamente),
+-- permitiendo que el usuario autenticado reclame su propia fila.
+-- Usa SECURITY DEFINER para operar fuera de RLS, pero con validaciones.
+create or replace function public.link_existing_usuario_to_auth_user(user_email varchar)
+returns boolean as $$
+begin
+  -- Solo vincular si la fila existe y NO tiene auth_user_id o coincide
+  update public.usuarios
+     set auth_user_id = auth.uid(), updated_at = now()
+   where email = user_email
+     and (auth_user_id is null or auth_user_id = auth.uid());
+
+  return found; -- true si se actualizó alguna fila
+end;
+$$ language plpgsql security definer;
+
+grant execute on function public.link_existing_usuario_to_auth_user(varchar) to authenticated;
+
+-- =====================================================
 -- ACTIVACIÓN DE TRIGGERS
 -- =====================================================
 

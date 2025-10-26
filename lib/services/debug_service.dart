@@ -1,5 +1,4 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/user_model.dart';
 
 class DebugService {
   static final SupabaseClient _client = Supabase.instance.client;

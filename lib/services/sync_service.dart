@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'database_service.dart';
+import 'logger_service.dart';
 import 'supabase_service.dart';
 
 class SyncService {
@@ -61,7 +62,7 @@ class SyncService {
     _isSyncing = true;
     
     try {
-      print('Iniciando sincronización...');
+      LoggerService.info('Iniciando sincronización...');
       
       // 1. Sincronizar datos locales hacia Supabase
       final uploadResult = await _uploadLocalChanges();
@@ -75,7 +76,7 @@ class SyncService {
       _isSyncing = false;
       
       if (uploadResult.success && downloadResult.success) {
-        print('Sincronización completada exitosamente');
+        LoggerService.info('Sincronización completada exitosamente');
         return SyncResult(success: true, message: 'Sincronización completada');
       } else {
         return SyncResult(
@@ -86,7 +87,7 @@ class SyncService {
       
     } catch (e) {
       _isSyncing = false;
-      print('Error durante sincronización: $e');
+      LoggerService.error('Error durante sincronización', error: e);
       return SyncResult(success: false, message: 'Error: $e');
     }
   }
@@ -109,7 +110,7 @@ class SyncService {
             errorCount++;
           }
         } catch (e) {
-          print('Error procesando item de sincronización ${item['id']}: $e');
+          LoggerService.error('Error procesando item de sincronización ${item['id']}', error: e);
           await _databaseService.incrementSyncAttempts(item['id']);
           errorCount++;
         }
@@ -135,11 +136,11 @@ class SyncService {
         case 'usuarios':
           return await _syncUser(operation, data);
         default:
-          print('Tabla no soportada para sincronización: $tableName');
+          LoggerService.warning('Tabla no soportada para sincronización: $tableName');
           return false;
       }
     } catch (e) {
-      print('Error procesando item de sincronización: $e');
+      LoggerService.error('Error procesando item de sincronización', error: e);
       return false;
     }
   }
@@ -167,7 +168,7 @@ class SyncService {
           return false;
       }
     } catch (e) {
-      print('Error sincronizando usuario: $e');
+      LoggerService.error('Error sincronizando usuario', error: e);
       return false;
     }
   }
@@ -201,7 +202,7 @@ class SyncService {
           }
           syncedCount++;
         } catch (e) {
-          print('Error procesando usuario remoto: $e');
+          LoggerService.error('Error procesando usuario remoto', error: e);
         }
       }
 

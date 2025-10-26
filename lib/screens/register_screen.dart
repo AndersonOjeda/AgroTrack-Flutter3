@@ -4,8 +4,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../services/supabase_service.dart';
 import '../services/location_service.dart';
+import '../services/logger_service.dart';
 import '../widgets/location_search_field.dart';
-import 'EmailConfirmationScreen.dart';
+import 'email_confirmation_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -203,7 +204,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Si falla el geocoding, usar coordenadas
         _ubicacionController.text = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
         _showInfo('Ubicación obtenida (coordenadas)');
-        print('Error de geocoding: $geocodingError');
+        LoggerService.error('Error de geocoding: $geocodingError');
       }
     } catch (e) {
       _showError('Error al obtener la ubicación: $e');
@@ -278,13 +279,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (response.user != null) {
         // Navegar a la pantalla de confirmación de email
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => EmailConfirmationScreen(
-              email: _emailController.text.trim(),
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => EmailConfirmationScreen(
+                userEmail: _emailController.text.trim(),
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     } on AuthException catch (e) {
       _showError(e.message);
@@ -573,7 +576,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         // Experiencia agrícola
                         DropdownButtonFormField<String>(
-                          value: _experienciaAgricola,
+                          initialValue: _experienciaAgricola,
                           decoration: InputDecoration(
                             labelText: 'Experiencia agrícola',
                             prefixIcon: const Icon(Icons.agriculture_outlined),
@@ -608,7 +611,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         // Tamaño de finca
                         DropdownButtonFormField<String>(
-                          value: _tamanoFinca,
+                          initialValue: _tamanoFinca,
                           decoration: InputDecoration(
                             labelText: 'Tamaño de finca',
                             prefixIcon: const Icon(Icons.landscape_outlined),
@@ -646,7 +649,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: _tipoAgricultura,
+                                initialValue: _tipoAgricultura,
                                 decoration: InputDecoration(
                                   labelText: 'Tipo de agricultura',
                                   prefixIcon: Icon(
