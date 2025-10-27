@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import '../services/weather_service.dart';
+import '../services/weather_location_service.dart';
+import '../models/weather_location.dart';
 
 class WeatherWidget extends StatefulWidget {
   final double? latitude;
   final double? longitude;
   final String? locationName;
+  final bool useSavedLocation;
+  final VoidCallback? onTap;
 
   const WeatherWidget({
     super.key,
     this.latitude,
     this.longitude,
     this.locationName,
+    this.useSavedLocation = false,
+    this.onTap,
   });
 
   @override
@@ -21,57 +27,110 @@ class _WeatherWidgetState extends State<WeatherWidget> {
   Map<String, dynamic>? weatherData;
   bool isLoading = false;
   String? error;
+  final WeatherLocationService _locationService = WeatherLocationService();
+  WeatherLocation? _currentLocation;
 
   @override
   void initState() {
     super.initState();
-    if (widget.latitude != null && widget.longitude != null) {
+    _initializeWidget();
+  }
+
+  Future<void> _initializeWidget() async {
+    if (widget.useSavedLocation) {
+      await _locationService.initialize();
+      _currentLocation = _locationService.currentLocation;
+    }
+    
+    if (_shouldFetchWeather()) {
       _fetchWeatherData();
     }
+  }
+
+  bool _shouldFetchWeather() {
+    if (widget.useSavedLocation) {
+      return _currentLocation != null;
+    } else {
+      return widget.latitude != null && widget.longitude != null;
+    }
+  }
+
+  double? get _latitude {
+    if (widget.useSavedLocation) {
+      return _currentLocation?.latitude;
+    }
+    return widget.latitude;
+  }
+
+  double? get _longitude {
+    if (widget.useSavedLocation) {
+      return _currentLocation?.longitude;
+    }
+    return widget.longitude;
+  }
+
+  String? get _locationName {
+    if (widget.useSavedLocation) {
+      return _currentLocation?.name;
+    }
+    return widget.locationName;
   }
 
   @override
   void didUpdateWidget(WeatherWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.latitude != oldWidget.latitude ||
+    
+    // Si cambió el modo de ubicación o las coordenadas
+    if (widget.useSavedLocation != oldWidget.useSavedLocation ||
+        widget.latitude != oldWidget.latitude ||
         widget.longitude != oldWidget.longitude) {
-      if (widget.latitude != null && widget.longitude != null) {
-        _fetchWeatherData();
-      }
+      _initializeWidget();
     }
   }
 
   Future<void> _fetchWeatherData() async {
-    if (widget.latitude == null || widget.longitude == null) return;
-
+    if (!mounted) return;
+    
+    final lat = _latitude;
+    final lon = _longitude;
+    
+    if (lat == null || lon == null) return;
+    
     setState(() {
       isLoading = true;
       error = null;
     });
 
     try {
-      // Usando Open-Meteo API (gratuita, sin necesidad de API key)
-      final data = await WeatherService.getCurrentWeatherFree(
-        latitude: widget.latitude!,
-        longitude: widget.longitude!,
+      final data = await WeatherService.getCurrentWeather(
+        latitude: lat,
+        longitude: lon,
       );
-
-      if (data != null) {
+      
+      if (mounted) {
         setState(() {
           weatherData = data;
           isLoading = false;
         });
-      } else {
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          error = 'Error al obtener datos del clima';
+          error = 'Error al cargar datos del clima';
           isLoading = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        error = 'Error de conexión';
-        isLoading = false;
-      });
+    }
+  }
+
+  Future<void> refreshWeatherData() async {
+    if (widget.useSavedLocation) {
+      await _locationService.initialize();
+      _currentLocation = _locationService.currentLocation;
+    }
+    
+    if (_shouldFetchWeather()) {
+      await _fetchWeatherData();
     }
   }
 
@@ -149,27 +208,44 @@ class _WeatherWidgetState extends State<WeatherWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.latitude == null || widget.longitude == null) {
-      return Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Center(
-          child: Text(
-            'Selecciona una ubicación para ver el clima',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
+    if (!_shouldFetchWeather()) {
+      return GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.cloud_outlined,
+                  size: 48,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.useSavedLocation 
+                      ? 'Toca para ver el clima'
+                      : 'Selecciona una ubicación para ver el clima',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
         ),
@@ -177,57 +253,63 @@ class _WeatherWidgetState extends State<WeatherWidget> {
     }
 
     if (isLoading) {
-      return Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Center(
-          child: CircularProgressIndicator(),
+      return GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
         ),
       );
     }
 
     if (error != null) {
-      return Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-             BoxShadow(
-               color: Colors.black.withValues(alpha: 0.1),
-               blurRadius: 10,
-               offset: const Offset(0, 4),
-             ),
-           ],
-        ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 32),
-              const SizedBox(height: 8),
-              Text(
-                error!,
-                style: const TextStyle(color: Colors.red),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: _fetchWeatherData,
-                child: const Text('Reintentar'),
-              ),
-            ],
+      return GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+               BoxShadow(
+                 color: Colors.black.withValues(alpha: 0.1),
+                 blurRadius: 10,
+                 offset: const Offset(0, 4),
+               ),
+             ],
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 32),
+                const SizedBox(height: 8),
+                Text(
+                  error!,
+                  style: const TextStyle(color: Colors.red),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: _fetchWeatherData,
+                  child: const Text('Reintentar'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -246,43 +328,51 @@ class _WeatherWidgetState extends State<WeatherWidget> {
     final iconCode = weatherData!['weather'][0]['icon'];
     final precipitation = weatherData!['rain']?['1h']?.toDouble() ?? 0.0;
 
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header con ubicación
-          if (widget.locationName != null)
-            Row(
-              children: [
-                const Icon(Icons.location_on, color: Colors.grey, size: 16),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    widget.locationName!,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header con ubicación
+            if (_locationName != null)
+              Row(
+                children: [
+                  const Icon(Icons.location_on, color: Colors.grey, size: 16),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      _locationName!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (widget.useSavedLocation)
+                    Icon(
+                      Icons.touch_app,
+                      size: 16,
+                      color: Colors.grey.shade400,
+                    ),
+                ],
+              ),
           const SizedBox(height: 16),
           
           // Temperatura principal y descripción
@@ -404,6 +494,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
           ),
         ],
       ),
+    ),
     );
   }
 

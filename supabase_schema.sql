@@ -486,6 +486,64 @@ create table if not exists public.inventory_items (
 );
 
 -- =====================================================
+-- TABLA DE UBICACIONES DE FINCAS
+-- =====================================================
+-- 
+-- Almacena las ubicaciones de las fincas de los usuarios para seguimiento del clima
+-- Permite a los usuarios guardar múltiples ubicaciones y monitorear el clima
+-- =====================================================
+
+create table if not exists public.farm_locations (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.usuarios(id) on delete cascade,
+  name varchar(255) not null,
+  latitude numeric not null,
+  longitude numeric not null,
+  description text,
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now()
+);
+
+-- =====================================================
+-- CONFIGURACIÓN DE SEGURIDAD PARA UBICACIONES DE FINCAS (RLS)
+-- =====================================================
+
+-- Habilitar RLS para la tabla de ubicaciones de fincas
+alter table if exists public.farm_locations enable row level security;
+
+-- Política para que los usuarios solo vean sus propias ubicaciones
+create policy "Farm locations viewable by owner" on public.farm_locations
+  for select using (
+    user_id in (
+      select id from public.usuarios where auth_user_id = auth.uid()
+    )
+  );
+
+-- Política para que los usuarios solo puedan insertar sus propias ubicaciones
+create policy "Farm locations insertable by owner" on public.farm_locations
+  for insert with check (
+    user_id in (
+      select id from public.usuarios where auth_user_id = auth.uid()
+    )
+  );
+
+-- Política para que los usuarios solo puedan actualizar sus propias ubicaciones
+create policy "Farm locations updatable by owner" on public.farm_locations
+  for update using (
+    user_id in (
+      select id from public.usuarios where auth_user_id = auth.uid()
+    )
+  );
+
+-- Política para que los usuarios solo puedan eliminar sus propias ubicaciones
+create policy "Farm locations deletable by owner" on public.farm_locations
+  for delete using (
+    user_id in (
+      select id from public.usuarios where auth_user_id = auth.uid()
+    )
+  );
+
+-- =====================================================
 -- CONFIGURACIÓN DE SEGURIDAD PARA INVENTARIO (RLS)
 -- =====================================================
 

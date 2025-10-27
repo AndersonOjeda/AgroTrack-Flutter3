@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-import '../widgets/enhanced_weather_widget.dart';
+import '../widgets/weather_widget.dart';
 import 'chat_bot.dart';
-import 'climate_screen.dart';
+import 'weather_screen.dart';
 import 'inventory_screen.dart';
 import '../services/location_service.dart';
 
@@ -74,15 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 'climate':
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => ClimateScreen(
-              latitude: _selectedLat,
-              longitude: _selectedLng,
-              locationName: _locationController.text.isNotEmpty
-                  ? _locationController.text
-                  : null,
-            ),
-          ),
+          MaterialPageRoute(builder: (context) => const WeatherScreen()),
         );
         break;
       case 'inventory':
@@ -738,16 +730,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: EnhancedWeatherWidget(
-                            key: ValueKey(
-                              'weather_${_selectedLat}_$_selectedLng',
-                            ),
+                          child: WeatherWidget(
+                            key: ValueKey('dashboard_weather_${_selectedLat}_$_selectedLng'),
                             latitude: _selectedLat,
                             longitude: _selectedLng,
-                            locationName:
-                                _locationController.text.isNotEmpty
-                                ? _locationController.text
-                                : null,
+                            locationName: _locationController.text.isNotEmpty ? _locationController.text : null,
+                            useSavedLocation: _selectedLat == null && _selectedLng == null,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const WeatherScreen(),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),

@@ -125,10 +125,10 @@ class _LocationSearchFieldState extends State<LocationSearchField> {
         children: [
           Icon(Icons.search_off, color: Colors.grey.shade400),
           const SizedBox(width: 8),
-          Text(
+          const Text(
             'No se encontraron resultados',
             style: TextStyle(
-              color: Colors.grey.shade600,
+              color: Colors.grey,
               fontSize: 14,
             ),
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/profile_service.dart';
 import '../services/user_service.dart';
+import 'profile_debug_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -46,7 +47,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _refreshProfile() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _currentUser = null;
+    });
     await _loadUserData();
   }
 
@@ -79,9 +83,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
           elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.bug_report),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileDebugScreen(),
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _refreshProfile,
+            ),
+          ],
         ),
-        body: const Center(
-          child: Text('No se pudo cargar la información del usuario'),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.grey,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No se pudo cargar la información del usuario',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Verifica tu conexión a internet y que estés autenticado',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _refreshProfile,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileDebugScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.bug_report),
+                label: const Text('Diagnóstico'),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -109,6 +174,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (result == true) {
                 _refreshProfile();
               }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ProfileDebugScreen(),
+                ),
+              );
             },
           ),
           IconButton(

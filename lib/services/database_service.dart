@@ -78,10 +78,27 @@ class DatabaseService {
     // Crear tabla de inventario
     await InventoryService.createTable(db);
 
+    // Crear tabla de ubicaciones de fincas
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS farm_locations (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        description TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        needs_sync INTEGER DEFAULT 1
+      )
+    ''');
+
     // Índices para mejorar rendimiento
     await db.execute('CREATE INDEX idx_usuarios_email ON usuarios(email)');
     await db.execute('CREATE INDEX idx_usuarios_needs_sync ON usuarios(needs_sync)');
     await db.execute('CREATE INDEX idx_sync_queue_table ON sync_queue(table_name)');
+    await db.execute('CREATE INDEX idx_farm_locations_user_id ON farm_locations(user_id)');
+    await db.execute('CREATE INDEX idx_farm_locations_sync ON farm_locations(needs_sync)');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
