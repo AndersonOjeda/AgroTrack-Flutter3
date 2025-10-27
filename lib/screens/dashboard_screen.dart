@@ -729,98 +729,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 const SizedBox(height: 16),
 
-                // Contenido: barra de navegación vertical + clima + grid
+                // Contenido scrollable tipo Facebook
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Barra de navegación vertical con iconos
-                        Container(
-                          width: 72,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Column(
-                              children: [
-                                for (final item in items) ...[
-                                  IconButton(
-                                    tooltip: item['label'] as String,
-                                    icon: Icon(item['icon'] as IconData),
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                    onPressed: () => _handleNavigation(
-                                      context,
-                                      item['action'] as String,
-                                      item['label'] as String,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                ],
-                              ],
+                  child: CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      // Widget del clima
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: EnhancedWeatherWidget(
+                            key: ValueKey(
+                              'weather_${_selectedLat}_$_selectedLng',
                             ),
+                            latitude: _selectedLat,
+                            longitude: _selectedLng,
+                            locationName:
+                                _locationController.text.isNotEmpty
+                                ? _locationController.text
+                                : null,
                           ),
                         ),
-                        const SizedBox(width: 16),
-
-                        // Panel derecho: clima arriba + grid abajo
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Widget de clima mejorado con alertas y recomendaciones
-                              EnhancedWeatherWidget(
-                                key: ValueKey(
-                                  'weather_${_selectedLat}_$_selectedLng',
-                                ),
-                                latitude: _selectedLat,
-                                longitude: _selectedLng,
-                                locationName:
-                                    _locationController.text.isNotEmpty
-                                    ? _locationController.text
-                                    : null,
-                              ),
-                              const SizedBox(height: 8),
-
-                              // Grid de funciones
-                              Expanded(
-                                child: GridView.builder(
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 2,
-                                        mainAxisSpacing: 16,
-                                        crossAxisSpacing: 16,
-                                        childAspectRatio: 1.1,
-                                      ),
-                                  itemCount: items.length,
-                                  itemBuilder: (context, index) {
-                                    final item = items[index];
-                                    return _buildGridItem(
-                                      context,
-                                      item['label'] as String,
-                                      item['icon'] as IconData,
-                                      item['action'] as String,
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
+                      ),
+                      
+                      // Espaciado
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 16),
+                      ),
+                      
+                      // Grid de funciones como sliver
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        sliver: SliverGrid(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                            childAspectRatio: 1.1,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final item = items[index];
+                              return _buildGridItem(
+                                context,
+                                item['label'] as String,
+                                item['icon'] as IconData,
+                                item['action'] as String,
+                              );
+                            },
+                            childCount: items.length,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      
+                      // Espaciado final para mejor UX
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 32),
+                      ),
+                    ],
                   ),
                 ),
               ],

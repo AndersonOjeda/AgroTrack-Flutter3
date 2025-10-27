@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import '../models/user_model.dart';
 import 'logger_service.dart';
+import 'inventory_service.dart';
 
 // Variable global para el databaseFactory
 DatabaseFactory? _databaseFactory;
@@ -73,6 +74,9 @@ class DatabaseService {
         attempts INTEGER DEFAULT 0
       )
     ''');
+
+    // Crear tabla de inventario
+    await InventoryService.createTable(db);
 
     // Índices para mejorar rendimiento
     await db.execute('CREATE INDEX idx_usuarios_email ON usuarios(email)');

@@ -7,6 +7,12 @@ class SupabaseService {
   static bool get isReady => _initialized;
   static SupabaseClient get client => Supabase.instance.client;
 
+  // URL de redirección para confirmación de email: solo SUPABASE_SITE_URL
+  static String? get emailRedirectUrl {
+    final site = dotenv.env['SUPABASE_SITE_URL'];
+    return (site != null && site.isNotEmpty) ? site : null;
+  }
+
   static Future<void> init() async {
     final url = dotenv.env['SUPABASE_URL'];
     final anonKey = dotenv.env['SUPABASE_ANON_KEY'];

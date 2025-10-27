@@ -265,6 +265,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final response = await SupabaseService.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
+        emailRedirectTo: SupabaseService.emailRedirectUrl,
         data: {
           'nombre': _nombreController.text.trim(),
           'apellido': _apellidoController.text.trim(),

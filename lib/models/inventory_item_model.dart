@@ -133,6 +133,7 @@ class InventoryItemModel {
       updatedAt: json['updated_at'] != null 
           ? DateTime.parse(json['updated_at'])
           : null,
+      needsSync: json['needs_sync'] == true || json['needs_sync'] == 1,
     );
   }
 

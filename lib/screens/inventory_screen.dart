@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/inventory_item_model.dart';
+import '../services/inventory_service.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -16,6 +17,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
   bool _showLowStock = false;
   bool _showExpiring = false;
 
+  final InventoryService _inventoryService = InventoryService();
+
   final List<String> _categories = [
     'Todos',
     'Semillas',
@@ -30,15 +33,44 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSampleData();
-    _applyFilters();
+    _loadInventoryItems();
   }
 
-  void _loadSampleData() {
+  Future<void> _loadInventoryItems() async {
+    try {
+      final items = await _inventoryService.getAllItems();
+      
+      // Si no hay elementos en la base de datos, cargar datos de ejemplo
+      if (items.isEmpty) {
+        await _loadSampleData();
+        final newItems = await _inventoryService.getAllItems();
+        setState(() {
+          _inventoryItems = newItems;
+        });
+      } else {
+        setState(() {
+          _inventoryItems = items;
+        });
+      }
+      
+      _applyFilters();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar inventario: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      // no-op
+    }
+  }
+
+  Future<void> _loadSampleData() async {
     // Datos de ejemplo para demostración
-    _inventoryItems = [
+    final sampleItems = [
       InventoryItemModel(
-        id: '1',
         nombre: 'Semillas de Maíz Híbrido',
         categoria: 'Semillas',
         descripcion: 'Semillas de maíz híbrido de alta productividad',
@@ -54,7 +86,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
         estado: 'disponible',
       ),
       InventoryItemModel(
-        id: '2',
         nombre: 'Fertilizante NPK 15-15-15',
         categoria: 'Fertilizantes',
         descripcion: 'Fertilizante completo para cultivos generales',
@@ -69,7 +100,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
         estado: 'disponible',
       ),
       InventoryItemModel(
-        id: '3',
         nombre: 'Herbicida Glifosato',
         categoria: 'Pesticidas',
         descripcion: 'Herbicida sistémico no selectivo',
@@ -85,7 +115,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
         estado: 'disponible',
       ),
       InventoryItemModel(
-        id: '4',
         nombre: 'Azadón de Acero',
         categoria: 'Herramientas',
         descripcion: 'Azadón con mango de madera y hoja de acero',
@@ -99,6 +128,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
         estado: 'disponible',
       ),
     ];
+
+    // Insertar datos de ejemplo en la base de datos
+    for (final item in sampleItems) {
+      await _inventoryService.createItem(item);
+    }
   }
 
   void _applyFilters() {
@@ -129,25 +163,192 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
-  void _showAddItemDialog() {
-    showDialog(
+  Future<void> _showAddItemDialog() async {
+    final result = await showDialog<InventoryItemModel>(
       context: context,
-      builder: (context) => _AddItemDialog(
-        onItemAdded: (item) {
-          setState(() {
-            _inventoryItems.add(item);
-            _applyFilters();
-          });
-        },
-      ),
+      builder: (context) => _AddItemDialog(),
     );
+
+    if (result != null) {
+      // Mostrar diálogo de confirmación
+      final confirmed = await _showConfirmationDialog(
+        title: 'Confirmar Creación',
+        content: '¿Está seguro de que desea agregar "${result.nombre}" al inventario?',
+        confirmText: 'Agregar',
+        cancelText: 'Cancelar',
+      );
+
+      if (confirmed) {
+        try {
+            final id = await _inventoryService.createItem(result);
+            if (id != null) {
+              await _loadInventoryItems();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Producto agregado exitosamente'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            } else {
+              throw Exception('No se pudo crear el elemento');
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error al agregar producto: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          } finally {
+            // no-op
+          }
+      }
+    }
   }
 
   void _showItemDetails(InventoryItemModel item) {
     showDialog(
       context: context,
-      builder: (context) => _ItemDetailsDialog(item: item),
+      builder: (context) => _ItemDetailsDialog(
+        item: item,
+        onEdit: () => _showEditItemDialog(item),
+        onDelete: () => _showDeleteConfirmation(item),
+      ),
     );
+  }
+
+  Future<void> _showEditItemDialog(InventoryItemModel item) async {
+    final result = await showDialog<InventoryItemModel>(
+      context: context,
+      builder: (context) => _EditItemDialog(item: item),
+    );
+
+    if (result != null) {
+      // Mostrar diálogo de confirmación
+      final confirmed = await _showConfirmationDialog(
+        title: 'Confirmar Actualización',
+        content: '¿Está seguro de que desea actualizar "${result.nombre}"?',
+        confirmText: 'Actualizar',
+        cancelText: 'Cancelar',
+      );
+
+      if (confirmed) {
+        try {
+          final success = await _inventoryService.updateItem(result);
+          if (success) {
+            await _loadInventoryItems();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Producto actualizado exitosamente'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          } else {
+            throw Exception('No se pudo actualizar el elemento');
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al actualizar producto: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        } finally {
+          // no-op
+        }
+      }
+    }
+  }
+
+  Future<void> _showDeleteConfirmation(InventoryItemModel item) async {
+    final confirmed = await _showConfirmationDialog(
+      title: 'Confirmar Eliminación',
+      content: '¿Está seguro de que desea eliminar "${item.nombre}" del inventario?\n\nEsta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      isDestructive: true,
+    );
+
+    if (confirmed) {
+      try {
+        final success = await _inventoryService.deleteItem(item.id!);
+        if (success) {
+          await _loadInventoryItems();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Producto eliminado exitosamente'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          throw Exception('No se pudo eliminar el elemento');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al eliminar producto: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        // no-op
+      }
+    }
+  }
+
+  Future<bool> _showConfirmationDialog({
+    required String title,
+    required String content,
+    required String confirmText,
+    required String cancelText,
+    bool isDestructive = false,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          title,
+          style: const TextStyle(fontFamily: 'NotoSans'),
+        ),
+        content: Text(
+          content,
+          style: const TextStyle(fontFamily: 'NotoSans'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              cancelText,
+              style: const TextStyle(fontFamily: 'NotoSans'),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDestructive ? Colors.red : null,
+              foregroundColor: isDestructive ? Colors.white : null,
+            ),
+            child: Text(
+              confirmText,
+              style: const TextStyle(fontFamily: 'NotoSans'),
+            ),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   Color _getStatusColor(InventoryItemModel item) {
@@ -477,6 +678,325 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 }
 
+class _EditItemDialog extends StatefulWidget {
+  final InventoryItemModel item;
+
+  const _EditItemDialog({required this.item});
+
+  @override
+  State<_EditItemDialog> createState() => _EditItemDialogState();
+}
+
+class _EditItemDialogState extends State<_EditItemDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nombreController;
+  late final TextEditingController _descripcionController;
+  late final TextEditingController _cantidadController;
+  late final TextEditingController _precioController;
+  late final TextEditingController _proveedorController;
+  late final TextEditingController _ubicacionController;
+  late final TextEditingController _loteController;
+  late final TextEditingController _cantidadMinimaController;
+
+  late String _selectedCategory;
+  late String _selectedUnidad;
+  DateTime? _fechaVencimiento;
+
+  final List<String> _categories = [
+    'Semillas',
+    'Fertilizantes',
+    'Pesticidas',
+    'Herramientas',
+    'Equipos',
+    'Materiales',
+    'Otros',
+  ];
+
+  final List<String> _unidades = [
+    'kg',
+    'litros',
+    'unidades',
+    'bultos',
+    'cajas',
+    'metros',
+    'gramos',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _nombreController = TextEditingController(text: widget.item.nombre);
+    _descripcionController = TextEditingController(text: widget.item.descripcion ?? '');
+    _cantidadController = TextEditingController(text: widget.item.cantidad.toString());
+    _precioController = TextEditingController(text: widget.item.precioUnitario?.toString() ?? '');
+    _proveedorController = TextEditingController(text: widget.item.proveedor ?? '');
+    _ubicacionController = TextEditingController(text: widget.item.ubicacionAlmacen ?? '');
+    _loteController = TextEditingController(text: widget.item.lote ?? '');
+    _cantidadMinimaController = TextEditingController(text: widget.item.cantidadMinima?.toString() ?? '');
+    
+    _selectedCategory = widget.item.categoria;
+    _selectedUnidad = widget.item.unidadMedida;
+    _fechaVencimiento = widget.item.fechaVencimiento;
+  }
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _descripcionController.dispose();
+    _cantidadController.dispose();
+    _precioController.dispose();
+    _proveedorController.dispose();
+    _ubicacionController.dispose();
+    _loteController.dispose();
+    _cantidadMinimaController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text(
+        'Editar Producto',
+        style: TextStyle(fontFamily: 'NotoSans'),
+      ),
+      content: SizedBox(
+        width: 400,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _nombreController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre del producto *',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Por favor ingrese el nombre del producto';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedCategory,
+                  decoration: const InputDecoration(
+                    labelText: 'Categoría *',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _categories.map((category) {
+                    return DropdownMenuItem(
+                      value: category,
+                      child: Text(category),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCategory = value!;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _descripcionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextFormField(
+                        controller: _cantidadController,
+                        decoration: const InputDecoration(
+                          labelText: 'Cantidad *',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Requerido';
+                          }
+                          if (double.tryParse(value) == null) {
+                            return 'Número inválido';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _selectedUnidad,
+                        decoration: const InputDecoration(
+                          labelText: 'Unidad',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _unidades.map((unidad) {
+                          return DropdownMenuItem(
+                            value: unidad,
+                            child: Text(unidad),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedUnidad = value!;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _precioController,
+                  decoration: const InputDecoration(
+                    labelText: 'Precio unitario',
+                    border: OutlineInputBorder(),
+                    prefixText: '\$ ',
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty) {
+                      if (double.tryParse(value) == null) {
+                        return 'Número inválido';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _proveedorController,
+                  decoration: const InputDecoration(
+                    labelText: 'Proveedor',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _ubicacionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Ubicación en almacén',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _loteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Lote',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _cantidadMinimaController,
+                  decoration: const InputDecoration(
+                    labelText: 'Cantidad mínima',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty) {
+                      if (double.tryParse(value) == null) {
+                        return 'Número inválido';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _fechaVencimiento ?? DateTime.now().add(const Duration(days: 30)),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 3650)),
+                    );
+                    if (date != null) {
+                      setState(() {
+                        _fechaVencimiento = date;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _fechaVencimiento == null
+                              ? 'Fecha de vencimiento (opcional)'
+                              : 'Vence: ${_fechaVencimiento!.day}/${_fechaVencimiento!.month}/${_fechaVencimiento!.year}',
+                        ),
+                        const Icon(Icons.calendar_today),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              final updatedItem = widget.item.copyWith(
+                nombre: _nombreController.text,
+                categoria: _selectedCategory,
+                descripcion: _descripcionController.text.isEmpty
+                    ? null
+                    : _descripcionController.text,
+                cantidad: double.parse(_cantidadController.text),
+                unidadMedida: _selectedUnidad,
+                precioUnitario: _precioController.text.isEmpty
+                    ? null
+                    : double.parse(_precioController.text),
+                proveedor: _proveedorController.text.isEmpty
+                    ? null
+                    : _proveedorController.text,
+                fechaVencimiento: _fechaVencimiento,
+                ubicacionAlmacen: _ubicacionController.text.isEmpty
+                    ? null
+                    : _ubicacionController.text,
+                lote: _loteController.text.isEmpty
+                    ? null
+                    : _loteController.text,
+                cantidadMinima: _cantidadMinimaController.text.isEmpty
+                    ? null
+                    : double.parse(_cantidadMinimaController.text),
+                updatedAt: DateTime.now(),
+              );
+
+              Navigator.of(context).pop(updatedItem);
+            }
+          },
+          child: const Text('Actualizar'),
+        ),
+      ],
+    );
+  }
+}
+
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;
@@ -526,9 +1046,7 @@ class _StatCard extends StatelessWidget {
 }
 
 class _AddItemDialog extends StatefulWidget {
-  final Function(InventoryItemModel) onItemAdded;
-
-  const _AddItemDialog({required this.onItemAdded});
+  const _AddItemDialog();
 
   @override
   State<_AddItemDialog> createState() => _AddItemDialogState();
@@ -748,7 +1266,6 @@ class _AddItemDialogState extends State<_AddItemDialog> {
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               final item = InventoryItemModel(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
                 nombre: _nombreController.text,
                 categoria: _selectedCategory,
                 descripcion: _descripcionController.text.isEmpty
@@ -777,8 +1294,7 @@ class _AddItemDialogState extends State<_AddItemDialog> {
                 createdAt: DateTime.now(),
               );
 
-              widget.onItemAdded(item);
-              Navigator.of(context).pop();
+              Navigator.of(context).pop(item);
             }
           },
           child: const Text('Agregar'),
@@ -790,8 +1306,14 @@ class _AddItemDialogState extends State<_AddItemDialog> {
 
 class _ItemDetailsDialog extends StatelessWidget {
   final InventoryItemModel item;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-  const _ItemDetailsDialog({required this.item});
+  const _ItemDetailsDialog({
+    required this.item,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -846,6 +1368,23 @@ class _ItemDetailsDialog extends StatelessWidget {
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cerrar'),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+            onEdit();
+          },
+          child: const Text('Editar'),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+            onDelete();
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.red,
+          ),
+          child: const Text('Eliminar'),
         ),
       ],
     );

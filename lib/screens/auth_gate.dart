@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
-import 'dashboard_screen.dart';
+import 'main_navigation_screen.dart';
 import 'login_screen.dart';
 
 class AuthGate extends StatelessWidget {
@@ -29,10 +29,10 @@ class AuthGate extends StatelessWidget {
 
         // Mientras el stream conecta, renderiza según sesión para evitar pantalla en blanco
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return session == null ? const LoginScreen() : const DashboardScreen();
+          return session == null ? const LoginScreen() : const MainNavigationScreen();
         }
 
-        return session == null ? const LoginScreen() : const DashboardScreen();
+        return session == null ? const LoginScreen() : const MainNavigationScreen();
       },
     );
   }
