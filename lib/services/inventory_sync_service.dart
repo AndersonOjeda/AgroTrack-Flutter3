@@ -27,6 +27,7 @@ class InventorySyncService {
   // Sincronizar un elemento individual
   Future<bool> syncItem(InventoryItemModel item) async {
     if (!SupabaseService.isReady) {
+      developer.log('Supabase no está listo para sincronización', name: 'InventorySyncService');
       return false;
     }
 
@@ -45,11 +46,56 @@ class InventorySyncService {
           .maybeSingle();
 
       if (userResponse == null) {
-        developer.log('Error: Usuario no encontrado en la tabla usuarios', name: 'InventorySyncService');
-        return false;
+        developer.log('Error: Usuario no encontrado en la tabla usuarios. Intentando crear...', name: 'InventorySyncService');
+        
+        // Intentar crear el usuario automáticamente
+        try {
+          await SupabaseService.client
+              .from('usuarios')
+              .insert({
+                'auth_user_id': currentUser.id,
+                'email': currentUser.email ?? '',
+                'nombre': currentUser.userMetadata?['nombre'] ?? 'Usuario',
+                'apellido': currentUser.userMetadata?['apellido'] ?? '',
+                'email_confirmado': currentUser.emailConfirmedAt != null,
+              });
+          
+          // Intentar obtener el usuario recién creado
+          final newUserResponse = await SupabaseService.client
+              .from('usuarios')
+              .select('id')
+              .eq('auth_user_id', currentUser.id)
+              .maybeSingle();
+          
+          if (newUserResponse == null) {
+            developer.log('Error: No se pudo crear el usuario en la tabla usuarios', name: 'InventorySyncService');
+            return false;
+          }
+          
+          developer.log('Usuario creado exitosamente en la tabla usuarios', name: 'InventorySyncService');
+        } catch (createError) {
+          developer.log('Error creando usuario: $createError', name: 'InventorySyncService');
+          return false;
+        }
+        
+        // Obtener el usuario nuevamente
+        final finalUserResponse = await SupabaseService.client
+            .from('usuarios')
+            .select('id')
+            .eq('auth_user_id', currentUser.id)
+            .maybeSingle();
+        
+        if (finalUserResponse == null) {
+          return false;
+        }
       }
 
-      final userId = userResponse['id'] as String;
+      final userId = userResponse?['id'] as String? ?? 
+                    (await SupabaseService.client
+                        .from('usuarios')
+                        .select('id')
+                        .eq('auth_user_id', currentUser.id)
+                        .single())['id'] as String;
 
       // Preparar datos para Supabase incluyendo user_id
       final itemData = item.toJson();

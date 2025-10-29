@@ -4,11 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-import '../widgets/weather_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import 'chat_bot.dart';
-import 'weather_screen.dart';
 import 'inventory_screen.dart';
+import 'map_weather_screen.dart';
 import '../services/location_service.dart';
+import '../services/weather_service.dart';
+import '../services/weather_state_provider.dart';
+import '../widgets/dashboard_weather_widget.dart';
 
 class LocationSuggestion {
   final String display;
@@ -74,7 +78,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 'climate':
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const WeatherScreen()),
+          MaterialPageRoute(builder: (context) => const MapWeatherScreen()),
         );
         break;
       case 'inventory':
@@ -232,6 +236,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           });
           _locationFocus.unfocus();
 
+          // Sincronizar con el widget de clima
+          _updateWeatherWidget(_selectedLat!, _selectedLng!, location.fullName);
+
+          // Navegar automáticamente al mapa
+          Future.delayed(const Duration(milliseconds: 200), () {
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MapWeatherScreen()),
+              );
+            }
+          });
+
           // Desactivar bandera después de un breve delay
           Future.delayed(const Duration(milliseconds: 100), () {
             _isSelectingSuggestion = false;
@@ -310,6 +327,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _suggestions.clear();
           });
           _locationFocus.unfocus();
+
+          // Sincronizar con el widget de clima
+          _updateWeatherWidget(suggestion.lat, suggestion.lng, suggestion.display);
+
+          // Navegar automáticamente al mapa
+          Future.delayed(const Duration(milliseconds: 200), () {
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MapWeatherScreen()),
+              );
+            }
+          });
 
           // Desactivar bandera después de un breve delay
           Future.delayed(const Duration(milliseconds: 100), () {
@@ -538,6 +568,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // Método para sincronizar con el widget de clima
+  void _updateWeatherWidget(double lat, double lng, String locationName) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Usar las mismas claves que el widget de clima para sincronización
+      await prefs.setDouble('selected_latitude', lat);
+      await prefs.setDouble('selected_longitude', lng);
+      await prefs.setString('selected_location', locationName);
+      
+      // Marcar timestamp para que el widget detecte el cambio
+      await prefs.setInt('location_update_timestamp', DateTime.now().millisecondsSinceEpoch);
+      
+      print('Ubicación sincronizada desde header: $locationName ($lat, $lng)');
+      
+      // Actualizar el WeatherStateProvider directamente
+      if (mounted) {
+        final weatherProvider = Provider.of<WeatherStateProvider>(context, listen: false);
+        final weatherService = WeatherService();
+        
+        weatherProvider.setLoading(true);
+        
+        try {
+          final weatherData = await weatherService.getWeatherData(lat, lng, locationName);
+          if (weatherData != null) {
+            weatherProvider.updateSelectedWeather(weatherData);
+            print('WeatherStateProvider actualizado con: $locationName');
+          } else {
+            weatherProvider.setError('No se pudieron obtener los datos del clima');
+          }
+        } catch (e) {
+          weatherProvider.setError('Error al obtener el clima: ${e.toString()}');
+          print('Error obteniendo datos del clima: $e');
+        }
+      }
+      
+    } catch (e) {
+      print('Error actualizando widget de clima: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = [
@@ -726,24 +797,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: CustomScrollView(
                     physics: const BouncingScrollPhysics(),
                     slivers: [
-                      // Widget del clima
+                      // Widget del clima compacto
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: WeatherWidget(
-                            key: ValueKey('dashboard_weather_${_selectedLat}_$_selectedLng'),
-                            latitude: _selectedLat,
-                            longitude: _selectedLng,
-                            locationName: _locationController.text.isNotEmpty ? _locationController.text : null,
-                            useSavedLocation: _selectedLat == null && _selectedLng == null,
+                          child: GestureDetector(
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (context) => const WeatherScreen(),
-                                ),
+                                MaterialPageRoute(builder: (context) => const MapWeatherScreen()),
                               );
                             },
+                            child: const DashboardWeatherWidget(),
                           ),
                         ),
                       ),

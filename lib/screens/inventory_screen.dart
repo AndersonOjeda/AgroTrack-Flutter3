@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/inventory_item_model.dart';
 import '../services/inventory_service.dart';
+import '../services/inventory_debug_service.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -365,6 +366,127 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return 'Disponible';
   }
 
+  Future<void> _showDiagnosticDialog() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Diagnóstico del Inventario'),
+        content: SizedBox(
+          width: 400,
+          height: 300,
+          child: FutureBuilder<Map<String, dynamic>>(
+            future: InventoryDebugService.runDiagnostic(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('Ejecutando diagnóstico...'),
+                    ],
+                  ),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error, color: Colors.red, size: 48),
+                      const SizedBox(height: 16),
+                      Text('Error: ${snapshot.error}'),
+                    ],
+                  ),
+                );
+              }
+
+              final result = snapshot.data!;
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _DiagnosticItem(
+                      'Estado de Supabase',
+                      result['supabase_status'] ? 'Conectado' : 'Desconectado',
+                      result['supabase_status'],
+                    ),
+                    _DiagnosticItem(
+                      'Usuario autenticado',
+                      result['user_authenticated'] ? 'Sí' : 'No',
+                      result['user_authenticated'],
+                    ),
+                    _DiagnosticItem(
+                      'Tabla usuarios',
+                      result['usuarios_table_exists'] ? 'Existe' : 'No existe',
+                      result['usuarios_table_exists'],
+                    ),
+                    _DiagnosticItem(
+                      'Tabla inventory_items',
+                      result['inventory_table_exists'] ? 'Existe' : 'No existe',
+                      result['inventory_table_exists'],
+                    ),
+                    _DiagnosticItem(
+                      'Items en Supabase',
+                      '${result['supabase_item_count']}',
+                      result['supabase_item_count'] >= 0,
+                    ),
+                    _DiagnosticItem(
+                      'Items locales',
+                      '${result['local_item_count']}',
+                      result['local_item_count'] >= 0,
+                    ),
+                    _DiagnosticItem(
+                      'Test CRUD',
+                      result['crud_test_success'] ? 'Exitoso' : 'Falló',
+                      result['crud_test_success'],
+                    ),
+                    if (result['error_message'] != null)
+                      Container(
+                        margin: const EdgeInsets.only(top: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.withOpacity(0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Error detectado:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              result['error_message'],
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -389,6 +511,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: _showDiagnosticDialog,
+            tooltip: 'Diagnóstico del inventario',
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: _showAddItemDialog,
@@ -1416,6 +1543,37 @@ class _DetailRow extends StatelessWidget {
           ),
           Expanded(
             child: Text(value, style: const TextStyle(fontFamily: 'NotoSans')),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiagnosticItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isOk;
+
+  const _DiagnosticItem(this.label, this.value, this.isOk);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(
+            isOk ? Icons.check_circle : Icons.error,
+            color: isOk ? Colors.green : Colors.red,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$label: $value',
+              style: const TextStyle(fontFamily: 'NotoSans'),
+            ),
           ),
         ],
       ),

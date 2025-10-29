@@ -20,10 +20,14 @@ class _ChatBotState extends State<ChatBot> {
   ChatSession? _chat;
   String? _error;
   String? _editingMessageId;
-  final Map<String, List<String>> _messageVariants = {}; // Para almacenar diferentes respuestas
-  final Map<String, List<String>> _questionVersions = {}; // Para almacenar versiones de preguntas editadas
-  final Map<String, int> _currentQuestionVersionIndex = {}; // Índice actual de la versión mostrada
-  final Map<String, Map<int, String>> _questionResponseMap = {}; // Mapea cada versión de pregunta con su respuesta
+  final Map<String, List<String>> _messageVariants =
+      {}; // Para almacenar diferentes respuestas
+  final Map<String, List<String>> _questionVersions =
+      {}; // Para almacenar versiones de preguntas editadas
+  final Map<String, int> _currentQuestionVersionIndex =
+      {}; // Índice actual de la versión mostrada
+  final Map<String, Map<int, String>> _questionResponseMap =
+      {}; // Mapea cada versión de pregunta con su respuesta
 
   _ChatBotState() {
     LoggerService.info('🏗️ ChatBot widget creado - Constructor llamado');
@@ -108,14 +112,20 @@ class _ChatBotState extends State<ChatBot> {
   }
 
   void _initChatWithAnyModel(String apiKey) {
-    LoggerService.info('🔄 Iniciando chat con API key: ${apiKey.substring(0, 10)}...');
-    
+    LoggerService.info(
+      '🔄 Iniciando chat con API key: ${apiKey.substring(0, 10)}...',
+    );
+
     var preferredRaw = dotenv.env['GEMINI_MODEL']?.trim();
     LoggerService.info('📋 Modelo preferido: $preferredRaw');
-    
-    if (preferredRaw != null && preferredRaw.toLowerCase().contains('flash-light')) {
+
+    if (preferredRaw != null &&
+        preferredRaw.toLowerCase().contains('flash-light')) {
       // Normaliza a "flash-lite" (algunas cuentas usan esta denominación)
-      preferredRaw = preferredRaw.toLowerCase().replaceAll('flash-light', 'flash-lite');
+      preferredRaw = preferredRaw.toLowerCase().replaceAll(
+        'flash-light',
+        'flash-lite',
+      );
     }
     final tried = <String>{};
 
@@ -142,8 +152,10 @@ class _ChatBotState extends State<ChatBot> {
         _chat = model.startChat(history: _buildHistoryFromMessages());
         _modelName = name;
         _error = null; // Limpiar cualquier error previo
-        LoggerService.info('✅ Chat inicializado exitosamente con modelo: $name');
-        
+        LoggerService.info(
+          '✅ Chat inicializado exitosamente con modelo: $name',
+        );
+
         // Actualizar el estado de la UI
         if (mounted) {
           setState(() {
@@ -154,7 +166,8 @@ class _ChatBotState extends State<ChatBot> {
       } catch (e) {
         LoggerService.error('❌ Error con modelo $name: $e');
         final m = e.toString();
-        final recoverable = m.contains('not found') ||
+        final recoverable =
+            m.contains('not found') ||
             m.contains('not supported') ||
             m.contains('Unsupported') ||
             m.contains('404');
@@ -182,29 +195,30 @@ class _ChatBotState extends State<ChatBot> {
   // Método para navegar entre versiones de preguntas
   void _navigateQuestionVersion(String messageId, bool isNext) {
     if (!_questionVersions.containsKey(messageId)) return;
-    
+
     final versions = _questionVersions[messageId]!;
     final currentIndex = _currentQuestionVersionIndex[messageId] ?? 0;
-    
+
     int newIndex;
     if (isNext) {
       newIndex = (currentIndex + 1) % versions.length;
     } else {
       newIndex = (currentIndex - 1 + versions.length) % versions.length;
     }
-    
+
     setState(() {
       _currentQuestionVersionIndex[messageId] = newIndex;
-      
+
       // Actualizar el texto del mensaje en la lista
       final messageIndex = _messages.indexWhere((msg) => msg.id == messageId);
       if (messageIndex != -1) {
         _messages[messageIndex] = _messages[messageIndex].copyWith(
           text: versions[newIndex],
         );
-        
+
         // Actualizar también la respuesta del bot correspondiente
-        if (messageIndex + 1 < _messages.length && !_messages[messageIndex + 1].isUser) {
+        if (messageIndex + 1 < _messages.length &&
+            !_messages[messageIndex + 1].isUser) {
           final botResponse = _questionResponseMap[messageId]?[newIndex];
           if (botResponse != null) {
             _messages[messageIndex + 1] = _messages[messageIndex + 1].copyWith(
@@ -219,7 +233,7 @@ class _ChatBotState extends State<ChatBot> {
   @override
   void initState() {
     super.initState();
-    
+
     // Agregar mensaje de bienvenida inmediatamente
     _messages.add(
       _ChatMessage.withId(
@@ -241,10 +255,12 @@ class _ChatBotState extends State<ChatBot> {
 
   Future<void> _initializeChat() async {
     LoggerService.info('🚀 Iniciando _initializeChat()');
-    
+
     final apiKey = dotenv.env['GEMINI_API_KEY'];
-    LoggerService.info('🔑 API Key encontrada: ${apiKey != null ? "Sí (${apiKey.substring(0, 10)}...)" : "No"}');
-    
+    LoggerService.info(
+      '🔑 API Key encontrada: ${apiKey != null ? "Sí (${apiKey.substring(0, 10)}...)" : "No"}',
+    );
+
     if (apiKey == null || apiKey.isEmpty) {
       LoggerService.error('❌ API Key faltante');
       setState(() {
@@ -256,11 +272,13 @@ class _ChatBotState extends State<ChatBot> {
     try {
       LoggerService.info('🔄 Llamando _initChatWithAnyModel...');
       _initChatWithAnyModel(apiKey);
-      
+
       LoggerService.info('✅ _initChatWithAnyModel completado');
-      LoggerService.info('📊 Estado del chat: ${_chat != null ? "Inicializado" : "Null"}');
+      LoggerService.info(
+        '📊 Estado del chat: ${_chat != null ? "Inicializado" : "Null"}',
+      );
       LoggerService.info('🚨 Error actual: $_error');
-      
+
       // Forzar actualización del estado
       if (mounted) {
         setState(() {
@@ -289,7 +307,7 @@ class _ChatBotState extends State<ChatBot> {
     LoggerService.info('📤 _sendMessage iniciado');
     final text = _textController.text.trim();
     LoggerService.info('📝 Texto del mensaje: "$text"');
-    
+
     if (text.isEmpty) {
       LoggerService.info('❌ Mensaje vacío, cancelando');
       return;
@@ -297,7 +315,9 @@ class _ChatBotState extends State<ChatBot> {
 
     // Verificar si el chat está inicializado
     if (_chat == null) {
-      LoggerService.info('⚠️ Chat no inicializado, intentando reinicializar...');
+      LoggerService.info(
+        '⚠️ Chat no inicializado, intentando reinicializar...',
+      );
       // Intentar reinicializar si no está listo
       await _initializeChat();
       if (_chat == null) {
@@ -305,7 +325,9 @@ class _ChatBotState extends State<ChatBot> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('El chat no está listo. Intenta de nuevo en un momento.'),
+              content: Text(
+                'El chat no está listo. Intenta de nuevo en un momento.',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -330,15 +352,16 @@ class _ChatBotState extends State<ChatBot> {
 
     LoggerService.info('📨 Agregando mensaje del usuario y iniciando carga...');
     final userMessage = _ChatMessage.withId(text: text, isUser: true);
-    
+
     // Si estamos editando, agregar la nueva versión a las versiones de pregunta
     if (_editingMessageId != null) {
       if (_questionVersions.containsKey(_editingMessageId)) {
         _questionVersions[_editingMessageId]!.add(text);
-        _currentQuestionVersionIndex[_editingMessageId!] = _questionVersions[_editingMessageId]!.length - 1;
+        _currentQuestionVersionIndex[_editingMessageId!] =
+            _questionVersions[_editingMessageId]!.length - 1;
       }
     }
-    
+
     setState(() {
       _messages.add(userMessage);
       _textController.clear();
@@ -350,31 +373,36 @@ class _ChatBotState extends State<ChatBot> {
       LoggerService.info('🚀 Enviando mensaje a Gemini...');
       final response = await _chat!.sendMessage(Content.text(text));
       LoggerService.info('✅ Respuesta recibida de Gemini');
-      
-      final reply = response.text?.trim() ??
+
+      final reply =
+          response.text?.trim() ??
           'No pude elaborar una respuesta en este momento. Intenta reformular '
-          'tu consulta con más contexto (cultivo, etapa, suelo, clima/localidad, síntomas) '
-          'y evita temas sensibles. Recuerda que esto no reemplaza asesoría técnica agrícola local.';
-      
-      LoggerService.info('📝 Respuesta procesada: "${reply.substring(0, reply.length > 50 ? 50 : reply.length)}..."');
-      
+              'tu consulta con más contexto (cultivo, etapa, suelo, clima/localidad, síntomas) '
+              'y evita temas sensibles. Recuerda que esto no reemplaza asesoría técnica agrícola local.';
+
+      LoggerService.info(
+        '📝 Respuesta procesada: "${reply.substring(0, reply.length > 50 ? 50 : reply.length)}..."',
+      );
+
       if (mounted) {
         final botMessage = _ChatMessage.withId(text: reply, isUser: false);
-        
+
         // Si estamos editando un mensaje, guardar la respuesta para esta versión
         if (_editingMessageId != null) {
           // Inicializar el mapa de respuestas si no existe
           if (!_questionResponseMap.containsKey(_editingMessageId)) {
             _questionResponseMap[_editingMessageId!] = {};
           }
-          
+
           // Guardar la respuesta para la versión actual
-          final currentVersionIndex = _currentQuestionVersionIndex[_editingMessageId] ?? 0;
-          _questionResponseMap[_editingMessageId!]![currentVersionIndex] = reply;
-          
+          final currentVersionIndex =
+              _currentQuestionVersionIndex[_editingMessageId] ?? 0;
+          _questionResponseMap[_editingMessageId!]![currentVersionIndex] =
+              reply;
+
           _editingMessageId = null;
         }
-        
+
         setState(() {
           _messages.add(botMessage);
         });
@@ -402,27 +430,33 @@ class _ChatBotState extends State<ChatBot> {
             _chat = model.startChat(history: _buildHistoryFromMessages());
             _modelName = candidate;
             final response = await _chat!.sendMessage(Content.text(text));
-            final reply = response.text?.trim() ??
+            final reply =
+                response.text?.trim() ??
                 'No pude elaborar una respuesta en este momento. Intenta reformular '
-                'tu consulta con más contexto (cultivo, etapa, suelo, clima/localidad, síntomas) '
-                'y evita temas sensibles. Recuerda que esto no reemplaza asesoría técnica agrícola local.';
+                    'tu consulta con más contexto (cultivo, etapa, suelo, clima/localidad, síntomas) '
+                    'y evita temas sensibles. Recuerda que esto no reemplaza asesoría técnica agrícola local.';
             if (mounted) {
-              final botMessage = _ChatMessage.withId(text: reply, isUser: false);
-              
+              final botMessage = _ChatMessage.withId(
+                text: reply,
+                isUser: false,
+              );
+
               // Si estamos editando un mensaje, guardar la respuesta para esta versión
               if (_editingMessageId != null) {
                 // Inicializar el mapa de respuestas si no existe
                 if (!_questionResponseMap.containsKey(_editingMessageId)) {
                   _questionResponseMap[_editingMessageId!] = {};
                 }
-                
+
                 // Guardar la respuesta para la versión actual
-                final currentVersionIndex = _currentQuestionVersionIndex[_editingMessageId] ?? 0;
-                _questionResponseMap[_editingMessageId!]![currentVersionIndex] = reply;
-                
+                final currentVersionIndex =
+                    _currentQuestionVersionIndex[_editingMessageId] ?? 0;
+                _questionResponseMap[_editingMessageId!]![currentVersionIndex] =
+                    reply;
+
                 _editingMessageId = null;
               }
-              
+
               setState(() {
                 _messages.add(botMessage);
               });
@@ -437,15 +471,19 @@ class _ChatBotState extends State<ChatBot> {
       LoggerService.info('🔄 Intentando con modelo de respaldo...');
       if (mounted) {
         setState(() {
-          _messages.add(_ChatMessage.withId(
-            text: 'Ocurrió un error: ${e.toString()}',
-            isUser: false,
-          ));
+          _messages.add(
+            _ChatMessage.withId(
+              text: 'Ocurrió un error: ${e.toString()}',
+              isUser: false,
+            ),
+          );
         });
         _scrollToBottom();
       }
     } finally {
-      LoggerService.info('🏁 Finalizando _sendMessage, limpiando estado de carga...');
+      LoggerService.info(
+        '🏁 Finalizando _sendMessage, limpiando estado de carga...',
+      );
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -459,31 +497,33 @@ class _ChatBotState extends State<ChatBot> {
   void _editLastUserMessage() {
     final lastUserMessageIndex = _messages.lastIndexWhere((msg) => msg.isUser);
     if (lastUserMessageIndex == -1) return;
-    
+
     final lastUserMessage = _messages[lastUserMessageIndex];
-    
+
     // Guardar la versión original si no existe
     if (!_questionVersions.containsKey(lastUserMessage.id)) {
       _questionVersions[lastUserMessage.id] = [lastUserMessage.text];
       _currentQuestionVersionIndex[lastUserMessage.id] = 0;
-      
+
       // Inicializar el mapa de respuestas y guardar la respuesta original
       _questionResponseMap[lastUserMessage.id] = {};
-      
+
       // Buscar la respuesta del bot correspondiente a esta pregunta
-      if (lastUserMessageIndex + 1 < _messages.length && !_messages[lastUserMessageIndex + 1].isUser) {
-        _questionResponseMap[lastUserMessage.id]![0] = _messages[lastUserMessageIndex + 1].text;
+      if (lastUserMessageIndex + 1 < _messages.length &&
+          !_messages[lastUserMessageIndex + 1].isUser) {
+        _questionResponseMap[lastUserMessage.id]![0] =
+            _messages[lastUserMessageIndex + 1].text;
       }
     }
-    
+
     _textController.text = lastUserMessage.text;
-    
+
     setState(() {
       _editingMessageId = lastUserMessage.id;
       // Remover mensajes desde la última pregunta del usuario
       _messages.removeRange(lastUserMessageIndex, _messages.length);
     });
-    
+
     _rebuildChatSession();
   }
 
@@ -548,7 +588,9 @@ class _ChatBotState extends State<ChatBot> {
                 context: context,
                 builder: (ctx) => AlertDialog(
                   title: const Text('Limpiar chat'),
-                  content: const Text('¿Deseas borrar todo el historial de mensajes?'),
+                  content: const Text(
+                    '¿Deseas borrar todo el historial de mensajes?',
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(ctx).pop(false),
@@ -576,370 +618,422 @@ class _ChatBotState extends State<ChatBot> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.green[50]!,
-              Colors.white,
-            ],
+            colors: [Colors.green[50]!, Colors.white],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _messages.length + (_isTyping ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    final isTypingRow = _isTyping && index == _messages.length;
+                    if (isTypingRow) {
+                      return Align(
+                        alignment: Alignment.centerLeft,
+                        child: _TypingBubble(),
+                      );
+                    }
+                    final msg = _messages[index];
+                    final isUser = msg.isUser;
+                    final bubbleColor = isUser
+                        ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
+                        : Colors.grey[100];
+                    final borderColor = isUser
+                        ? Theme.of(context).primaryColor
+                        : Colors.grey[300];
+
+                    // Verificar si es la última pregunta del usuario
+                    final isLastUserMessage =
+                        msg.isUser &&
+                        index == _messages.lastIndexWhere((m) => m.isUser);
+
+                    final bubble = Container(
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.all(12),
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      decoration: BoxDecoration(
+                        color: bubbleColor,
+                        border: Border.all(color: borderColor ?? Colors.grey),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: Text(msg.text)),
+                              // Flechas de navegación para versiones de preguntas editadas
+                              if (msg.isUser &&
+                                  _questionVersions.containsKey(msg.id) &&
+                                  (_questionVersions[msg.id]?.length ?? 0) > 1)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          InkWell(
+                                            onTap: () =>
+                                                _navigateQuestionVersion(
+                                                  msg.id,
+                                                  false,
+                                                ),
+                                            child: const Icon(
+                                              Icons.arrow_back_ios,
+                                              size: 12,
+                                              color: Colors.blue,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${(_currentQuestionVersionIndex[msg.id] ?? 0) + 1}/${_questionVersions[msg.id]?.length ?? 1}',
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          InkWell(
+                                            onTap: () =>
+                                                _navigateQuestionVersion(
+                                                  msg.id,
+                                                  true,
+                                                ),
+                                            child: const Icon(
+                                              Icons.arrow_forward_ios,
+                                              size: 12,
+                                              color: Colors.blue,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                          if (!msg.isUser &&
+                              _messageVariants.containsKey(msg.id))
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                'Toca para ver ${_messageVariants[msg.id]!.length} variantes',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          // Menú de 3 puntos para la última pregunta del usuario
+                          if (isLastUserMessage)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: PopupMenuButton<String>(
+                                  icon: const Icon(
+                                    Icons.more_vert,
+                                    size: 18,
+                                    color: Colors.grey,
+                                  ),
+                                  tooltip: 'Opciones',
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                  onSelected: (String value) {
+                                    switch (value) {
+                                      case 'edit':
+                                        _editLastUserMessage();
+                                        break;
+                                      case 'copy':
+                                        _copyMessage(msg.text);
+                                        break;
+                                      case 'delete':
+                                        // Encontrar el índice del mensaje del usuario
+                                        final userMessageIndex = index;
+                                        final userMessage =
+                                            _messages[userMessageIndex];
+
+                                        setState(() {
+                                          // Eliminar la pregunta del usuario
+                                          _messages.removeAt(userMessageIndex);
+
+                                          // Si hay una respuesta del bot después, también eliminarla
+                                          if (userMessageIndex <
+                                                  _messages.length &&
+                                              !_messages[userMessageIndex]
+                                                  .isUser) {
+                                            _messages.removeAt(
+                                              userMessageIndex,
+                                            );
+                                          }
+
+                                          // Limpiar los mapas de versiones y respuestas
+                                          _questionVersions.remove(
+                                            userMessage.id,
+                                          );
+                                          _currentQuestionVersionIndex.remove(
+                                            userMessage.id,
+                                          );
+                                          _questionResponseMap.remove(
+                                            userMessage.id,
+                                          );
+                                          _messageVariants.remove(
+                                            userMessage.id,
+                                          );
+                                        });
+                                        _rebuildChatSession();
+                                        break;
+                                    }
+                                  },
+                                  itemBuilder: (BuildContext context) => [
+                                    const PopupMenuItem<String>(
+                                      value: 'edit',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.edit,
+                                            size: 16,
+                                            color: Colors.blue,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text('Editar pregunta'),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem<String>(
+                                      value: 'copy',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.copy,
+                                            size: 16,
+                                            color: Colors.green,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text('Copiar pregunta'),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem<String>(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.delete,
+                                            size: 16,
+                                            color: Colors.red,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text('Eliminar pregunta'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+
+                    final avatar = CircleAvatar(
+                      radius: 14,
+                      backgroundColor: isUser
+                          ? Colors.blue[100]
+                          : Colors.green[100],
+                      child: Icon(
+                        isUser ? Icons.person : Icons.eco,
+                        color: isUser ? Colors.blue[700] : Colors.green[700],
+                        size: 20,
+                      ),
+                    );
+
+                    final row = Container(
+                      margin: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 8,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: isUser
+                            ? MainAxisAlignment.end
+                            : MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: isUser
+                            ? [bubble, const SizedBox(width: 8), avatar]
+                            : [avatar, const SizedBox(width: 8), bubble],
+                      ),
+                    );
+
+                    return Dismissible(
+                      key: ValueKey(
+                        'msg-$index-${msg.isUser}-${msg.text.hashCode}',
+                      ),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        color: Colors.red[300],
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      confirmDismiss: (dir) async {
+                        return await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Eliminar mensaje'),
+                            content: const Text(
+                              '¿Deseas borrar este mensaje del historial?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(false),
+                                child: const Text('Cancelar'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.of(ctx).pop(true),
+                                child: const Text('Borrar'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      onDismissed: (dir) {
+                        setState(() {
+                          _messages.removeAt(index);
+                        });
+                        _rebuildChatSession();
+                      },
+                      child: GestureDetector(
+                        onLongPress: () => _copyMessage(msg.text),
+                        onTap:
+                            !msg.isUser && _messageVariants.containsKey(msg.id)
+                            ? () => _showMessageVariants(msg.id)
+                            : null,
+                        child: row,
+                      ),
+                    );
+                  },
                 ),
               ),
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                itemCount: _messages.length + (_isTyping ? 1 : 0),
-                itemBuilder: (context, index) {
-                  final isTypingRow = _isTyping && index == _messages.length;
-                  if (isTypingRow) {
-                    return Align(
-                      alignment: Alignment.centerLeft,
-                      child: _TypingBubble(),
-                    );
-                  }
-                  final msg = _messages[index];
-                  final isUser = msg.isUser;
-                  final bubbleColor = isUser
-                      ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
-                      : Colors.grey[100];
-                  final borderColor = isUser
-                      ? Theme.of(context).primaryColor
-                      : Colors.grey[300];
-
-                  // Verificar si es la última pregunta del usuario
-                  final isLastUserMessage = msg.isUser && 
-                      index == _messages.lastIndexWhere((m) => m.isUser);
-
-                  final bubble = Container(
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    padding: const EdgeInsets.all(12),
-                    constraints: const BoxConstraints(maxWidth: 600),
-                    decoration: BoxDecoration(
-                      color: bubbleColor,
-                      border: Border.all(color: borderColor ?? Colors.grey),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    if (_messages.isNotEmpty && _messages.any((m) => m.isUser))
+                      IconButton(
+                        onPressed: _editLastUserMessage,
+                        icon: const Icon(Icons.edit),
+                        tooltip: 'Editar última pregunta',
+                      ),
+                    Expanded(
+                      child: TextField(
+                        controller: _textController,
+                        enabled: !_isLoading,
+                        decoration: InputDecoration(
+                          hintText: _editingMessageId != null
+                              ? 'Editando pregunta...'
+                              : (_error != null
+                                    ? 'Error: $_error'
+                                    : (_chat == null
+                                          ? 'Inicializando chat...'
+                                          : 'Escribe tu consulta...')),
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                          errorText: _error,
+                          suffixIcon: _editingMessageId != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    setState(() {
+                                      _editingMessageId = null;
+                                      _textController.clear();
+                                    });
+                                  },
+                                  tooltip: 'Cancelar edición',
+                                )
+                              : null,
                         ),
-                      ],
+                        minLines: 1,
+                        maxLines: 5,
+                        onSubmitted: (_) => _sendMessage(),
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(child: Text(msg.text)),
-                            // Flechas de navegación para versiones de preguntas editadas
-                            if (msg.isUser && _questionVersions.containsKey(msg.id) && 
-                                (_questionVersions[msg.id]?.length ?? 0) > 1)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[200],
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        InkWell(
-                                          onTap: () => _navigateQuestionVersion(msg.id, false),
-                                          child: const Icon(
-                                            Icons.arrow_back_ios,
-                                            size: 12,
-                                            color: Colors.blue,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${(_currentQuestionVersionIndex[msg.id] ?? 0) + 1}/${_questionVersions[msg.id]?.length ?? 1}',
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        InkWell(
-                                          onTap: () => _navigateQuestionVersion(msg.id, true),
-                                          child: const Icon(
-                                            Icons.arrow_forward_ios,
-                                            size: 12,
-                                            color: Colors.blue,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                        if (!msg.isUser && _messageVariants.containsKey(msg.id))
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              'Toca para ver ${_messageVariants[msg.id]!.length} variantes',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
-                        // Menú de 3 puntos para la última pregunta del usuario
-                        if (isLastUserMessage)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: PopupMenuButton<String>(
-                                icon: const Icon(
-                                  Icons.more_vert,
-                                  size: 18,
-                                  color: Colors.grey,
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _sendMessage,
+                      icon: _isLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
                                 ),
-                                tooltip: 'Opciones',
-                                padding: const EdgeInsets.all(4),
-                                constraints: const BoxConstraints(
-                                  minWidth: 32,
-                                  minHeight: 32,
-                                ),
-                                onSelected: (String value) {
-                                  switch (value) {
-                                    case 'edit':
-                                      _editLastUserMessage();
-                                      break;
-                                    case 'copy':
-                                      _copyMessage(msg.text);
-                                      break;
-                                    case 'delete':
-                                      // Encontrar el índice del mensaje del usuario
-                                      final userMessageIndex = index;
-                                      final userMessage = _messages[userMessageIndex];
-                                      
-                                      setState(() {
-                                        // Eliminar la pregunta del usuario
-                                        _messages.removeAt(userMessageIndex);
-                                        
-                                        // Si hay una respuesta del bot después, también eliminarla
-                                        if (userMessageIndex < _messages.length && 
-                                            !_messages[userMessageIndex].isUser) {
-                                          _messages.removeAt(userMessageIndex);
-                                        }
-                                        
-                                        // Limpiar los mapas de versiones y respuestas
-                                        _questionVersions.remove(userMessage.id);
-                                        _currentQuestionVersionIndex.remove(userMessage.id);
-                                        _questionResponseMap.remove(userMessage.id);
-                                        _messageVariants.remove(userMessage.id);
-                                      });
-                                      _rebuildChatSession();
-                                      break;
-                                  }
-                                },
-                                itemBuilder: (BuildContext context) => [
-                                  const PopupMenuItem<String>(
-                                    value: 'edit',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.edit, size: 16, color: Colors.blue),
-                                        SizedBox(width: 8),
-                                        Text('Editar pregunta'),
-                                      ],
-                                    ),
-                                  ),
-                                  const PopupMenuItem<String>(
-                                    value: 'copy',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.copy, size: 16, color: Colors.green),
-                                        SizedBox(width: 8),
-                                        Text('Copiar pregunta'),
-                                      ],
-                                    ),
-                                  ),
-                                  const PopupMenuItem<String>(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete, size: 16, color: Colors.red),
-                                        SizedBox(width: 8),
-                                        Text('Eliminar pregunta'),
-                                      ],
-                                    ),
-                                  ),
-                                ],
                               ),
+                            )
+                          : Icon(
+                              _editingMessageId != null
+                                  ? Icons.edit
+                                  : Icons.send,
                             ),
-                          ),
-                      ],
-                    ),
-                  );
-
-                  final avatar = CircleAvatar(
-                    radius: 14,
-                    backgroundColor: isUser
-                        ? Colors.blue[100]
-                        : Colors.green[100],
-                    child: Icon(
-                      isUser ? Icons.person : Icons.eco,
-                      color: isUser ? Colors.blue[700] : Colors.green[700],
-                      size: 20,
-                    ),
-                  );
-
-                  final row = Container(
-                    margin: const EdgeInsets.symmetric(
-                      vertical: 4,
-                      horizontal: 8,
-                    ),
-                    child: Row(
-                      mainAxisAlignment:
-                          isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: isUser
-                          ? [bubble, const SizedBox(width: 8), avatar]
-                          : [avatar, const SizedBox(width: 8), bubble],
-                    ),
-                  );
-
-                  return Dismissible(
-                    key: ValueKey('msg-$index-${msg.isUser}-${msg.text.hashCode}'),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      color: Colors.red[300],
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    confirmDismiss: (dir) async {
-                      return await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Eliminar mensaje'),
-                          content: const Text(
-                              '¿Deseas borrar este mensaje del historial?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(ctx).pop(false),
-                              child: const Text('Cancelar'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () => Navigator.of(ctx).pop(true),
-                              child: const Text('Borrar'),
-                            ),
-                          ],
+                      label: Text(
+                        _editingMessageId != null ? 'Editar' : 'Enviar',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[600],
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
                         ),
-                      );
-                    },
-                    onDismissed: (dir) {
-                      setState(() {
-                        _messages.removeAt(index);
-                      });
-                      _rebuildChatSession();
-                    },
-                    child: GestureDetector(
-                      onLongPress: () => _copyMessage(msg.text),
-                      onTap: !msg.isUser && _messageVariants.containsKey(msg.id)
-                          ? () => _showMessageVariants(msg.id)
-                          : null,
-                      child: row,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                      ),
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  if (_messages.isNotEmpty && _messages.any((m) => m.isUser))
-                    IconButton(
-                      onPressed: _editLastUserMessage,
-                      icon: const Icon(Icons.edit),
-                      tooltip: 'Editar última pregunta',
-                    ),
-                  Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      enabled: !_isLoading,
-                      decoration: InputDecoration(
-                        hintText: _editingMessageId != null 
-                            ? 'Editando pregunta...' 
-                            : (_error != null 
-                              ? 'Error: $_error' 
-                              : (_chat == null 
-                                ? 'Inicializando chat...' 
-                                : 'Escribe tu consulta...')),
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                        errorText: _error,
-                        suffixIcon: _editingMessageId != null
-                            ? IconButton(
-                                icon: const Icon(Icons.close),
-                                onPressed: () {
-                                  setState(() {
-                                    _editingMessageId = null;
-                                    _textController.clear();
-                                  });
-                                },
-                                tooltip: 'Cancelar edición',
-                              )
-                            : null,
-                      ),
-                      minLines: 1,
-                      maxLines: 5,
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _sendMessage,
-                    icon: _isLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : Icon(_editingMessageId != null ? Icons.edit : Icons.send),
-                    label: Text(_editingMessageId != null ? 'Editar' : 'Enviar'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[600],
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-           ),
-         ),
-       ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -949,7 +1043,7 @@ class _ChatMessage {
   final String text;
   final bool isUser;
   final DateTime timestamp;
-  
+
   _ChatMessage({
     required this.text,
     required this.isUser,
@@ -999,9 +1093,18 @@ class _TypingBubbleState extends State<_TypingBubble>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat();
-    _anim1 = CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.6));
-    _anim2 = CurvedAnimation(parent: _controller, curve: const Interval(0.2, 0.8));
-    _anim3 = CurvedAnimation(parent: _controller, curve: const Interval(0.4, 1.0));
+    _anim1 = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.6),
+    );
+    _anim2 = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.2, 0.8),
+    );
+    _anim3 = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.4, 1.0),
+    );
   }
 
   @override
@@ -1037,12 +1140,11 @@ class _TypingBubbleState extends State<_TypingBubble>
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          _dot(_anim1),
-          _dot(_anim2),
-          _dot(_anim3),
-        ],
+        children: [_dot(_anim1), _dot(_anim2), _dot(_anim3)],
       ),
     );
   }
 }
+
+
+//comentario para nuevo commit, porque no coge el pull
