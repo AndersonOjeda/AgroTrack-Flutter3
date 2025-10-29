@@ -3,7 +3,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/farm_location_model.dart';
-import '../models/weather_location.dart';
 import 'database_service.dart';
 import 'logger_service.dart';
 
@@ -165,24 +164,7 @@ class FarmLocationService {
     }
   }
 
-  /// Convertir ubicaciones de finca a WeatherLocation para compatibilidad
-  Future<List<WeatherLocation>> getWeatherLocations() async {
-    try {
-      final farmLocations = await getUserLocations();
-      return farmLocations.map((farmLocation) => WeatherLocation(
-        id: farmLocation.id,
-        name: farmLocation.name,
-        latitude: farmLocation.latitude,
-        longitude: farmLocation.longitude,
-        country: 'Colombia', // Valor por defecto
-        isDefault: false,
-        createdAt: farmLocation.createdAt ?? DateTime.now(),
-      )).toList();
-    } catch (e) {
-      LoggerService.error('Error convirtiendo ubicaciones: $e');
-      return [];
-    }
-  }
+
 
   /// Verificar conexión a internet
   static Future<bool> _hasInternetConnection() async {

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import 'inventory_screen.dart';
-import 'weather_screen.dart';
 import 'chat_bot.dart';
-import 'profile_screen.dart';
+import 'settings_screen.dart';
+import 'weather_display_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -21,9 +21,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   final List<Widget> _screens = [
     const DashboardScreen(),
     const InventoryScreen(),
-    const WeatherScreen(),
+    const WeatherDisplayScreen(),
     const ChatBot(),
-    const ProfileScreen(),
+    const SettingsScreen(),
   ];
 
   final List<NavigationItem> _navigationItems = [
