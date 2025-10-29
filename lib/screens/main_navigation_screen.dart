@@ -4,6 +4,7 @@ import 'inventory_screen.dart';
 import 'weather_screen.dart';
 import 'chat_bot.dart';
 import 'profile_screen.dart';
+import 'tasks_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -22,6 +23,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     const DashboardScreen(),
     const InventoryScreen(),
     const WeatherScreen(),
+    const TasksScreen(),
     const ChatBot(),
     const ProfileScreen(),
   ];
@@ -44,6 +46,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       activeIcon: Icons.wb_sunny,
       label: 'Clima',
       color: const Color(0xFFFF9800),
+    ),
+    NavigationItem(
+      icon: Icons.task_outlined,
+      activeIcon: Icons.task,
+      label: 'Tareas',
+      color: const Color(0xFF9C27B0),
     ),
     NavigationItem(
       icon: Icons.smart_toy_outlined,

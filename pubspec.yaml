@@ -48,6 +48,10 @@ dependencies:
   connectivity_plus: ^5.0.2
   # Para manejo de fechas y sincronización
   intl: ^0.19.0
+  # Para serialización JSON
+  json_annotation: ^4.8.1
+  build_runner: ^2.4.6
+  json_serializable: ^6.7.1
   http: ^1.2.0
   # Local storage and cache
   shared_preferences: ^2.2.2
