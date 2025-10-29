@@ -9,10 +9,19 @@ import 'location_map_screen.dart';
 class WeatherDisplayScreen extends StatelessWidget {
   const WeatherDisplayScreen({super.key});
 
-  Future<void> _loadWeatherForLocation(BuildContext context, LatLng location, String locationName) async {
-    print('DEBUG: _loadWeatherForLocation iniciado para $locationName en ${location.latitude}, ${location.longitude}');
-    
-    final weatherProvider = Provider.of<WeatherStateProvider>(context, listen: false);
+  Future<void> _loadWeatherForLocation(
+    BuildContext context,
+    LatLng location,
+    String locationName,
+  ) async {
+    print(
+      'DEBUG: _loadWeatherForLocation iniciado para $locationName en ${location.latitude}, ${location.longitude}',
+    );
+
+    final weatherProvider = Provider.of<WeatherStateProvider>(
+      context,
+      listen: false,
+    );
     final weatherService = WeatherService();
 
     // Mostrar estado de carga
@@ -30,7 +39,7 @@ class WeatherDisplayScreen extends StatelessWidget {
       if (weatherData != null) {
         // Actualizar el estado con los nuevos datos
         weatherProvider.updateSelectedWeather(weatherData);
-        
+
         // Mostrar mensaje de éxito
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -42,11 +51,15 @@ class WeatherDisplayScreen extends StatelessWidget {
           );
         }
       } else {
-        weatherProvider.setError('No se pudieron obtener datos del clima para esta ubicación');
+        weatherProvider.setError(
+          'No se pudieron obtener datos del clima para esta ubicación',
+        );
       }
     } catch (e) {
-      weatherProvider.setError('Error al obtener datos del clima: ${e.toString()}');
-      
+      weatherProvider.setError(
+        'Error al obtener datos del clima: ${e.toString()}',
+      );
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -67,10 +80,7 @@ class WeatherDisplayScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           'Datos Climáticos',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontFamily: 'NotoSans',
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, fontFamily: 'NotoSans'),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
@@ -97,18 +107,24 @@ class WeatherDisplayScreen extends StatelessWidget {
                   builder: (context) => const LocationMapScreen(),
                 ),
               );
-              
+
               print('DEBUG: Resultado recibido de LocationMapScreen: $result');
-              
+
               if (result != null && result is Map<String, dynamic>) {
                 final location = result['location'] as LatLng?;
                 final locationName = result['locationName'] as String?;
-                
-                print('DEBUG: Location: $location, LocationName: $locationName');
-                
+
+                print(
+                  'DEBUG: Location: $location, LocationName: $locationName',
+                );
+
                 if (location != null && locationName != null) {
                   print('DEBUG: Llamando _loadWeatherForLocation...');
-                  await _loadWeatherForLocation(context, location, locationName);
+                  await _loadWeatherForLocation(
+                    context,
+                    location,
+                    locationName,
+                  );
                 } else {
                   print('DEBUG: Location o LocationName son null');
                 }
@@ -134,7 +150,10 @@ class WeatherDisplayScreen extends StatelessWidget {
             return _buildNoDataView(context);
           }
 
-          return _buildWeatherView(context, weatherProvider.selectedWeatherData!);
+          return _buildWeatherView(
+            context,
+            weatherProvider.selectedWeatherData!,
+          );
         },
       ),
     );
@@ -171,11 +190,7 @@ class WeatherDisplayScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red[400],
-            ),
+            Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
             const SizedBox(height: 16),
             Text(
               'Error al obtener datos',
@@ -211,7 +226,10 @@ class WeatherDisplayScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
@@ -227,11 +245,7 @@ class WeatherDisplayScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.cloud_off,
-              size: 64,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.cloud_off, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               'Sin datos climáticos',
@@ -267,7 +281,10 @@ class WeatherDisplayScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
@@ -308,11 +325,7 @@ class WeatherDisplayScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.location_on,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                    Icon(Icons.location_on, color: Colors.white, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -328,10 +341,7 @@ class WeatherDisplayScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  weatherData.icon,
-                  style: const TextStyle(fontSize: 64),
-                ),
+                Text(weatherData.icon, style: const TextStyle(fontSize: 64)),
                 const SizedBox(height: 12),
                 Text(
                   '${weatherData.temperature.round()}°C',
@@ -419,7 +429,13 @@ class WeatherDisplayScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailCard(BuildContext context, String title, String value, IconData icon, Color color) {
+  Widget _buildDetailCard(
+    BuildContext context,
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -461,7 +477,7 @@ class WeatherDisplayScreen extends StatelessWidget {
 
   Widget _buildAgriculturalRecommendations(BuildContext context, weatherData) {
     List<String> recommendations = _getAgriculturalRecommendations(weatherData);
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -489,26 +505,34 @@ class WeatherDisplayScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ...recommendations.map((recommendation) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.check_circle, color: Colors.green.shade600, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    recommendation,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.green.shade700,
-                      fontFamily: 'NotoSans',
-                    ),
+          ...recommendations
+              .map(
+                (recommendation) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: Colors.green.shade600,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          recommendation,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.green.shade700,
+                            fontFamily: 'NotoSans',
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          )).toList(),
+              )
+              .toList(),
         ],
       ),
     );
@@ -516,7 +540,7 @@ class WeatherDisplayScreen extends StatelessWidget {
 
   List<String> _getAgriculturalRecommendations(weatherData) {
     List<String> recommendations = [];
-    
+
     // Recomendaciones basadas en temperatura
     if (weatherData.temperature < 10) {
       recommendations.add('Protege los cultivos sensibles al frío');
@@ -527,7 +551,7 @@ class WeatherDisplayScreen extends StatelessWidget {
     } else {
       recommendations.add('Temperatura ideal para la mayoría de cultivos');
     }
-    
+
     // Recomendaciones basadas en humedad
     if (weatherData.humidity > 80) {
       recommendations.add('Vigila posibles enfermedades fúngicas');
@@ -536,13 +560,13 @@ class WeatherDisplayScreen extends StatelessWidget {
       recommendations.add('Considera sistemas de riego por aspersión');
       recommendations.add('Monitorea el estrés hídrico en las plantas');
     }
-    
+
     // Recomendaciones basadas en viento
     if (weatherData.windSpeed > 20) {
       recommendations.add('Protege cultivos altos del viento fuerte');
       recommendations.add('Revisa estructuras de soporte');
     }
-    
+
     return recommendations;
   }
 
