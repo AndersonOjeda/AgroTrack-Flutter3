@@ -27,10 +27,7 @@ class _ClimateScreenState extends State<ClimateScreen> {
       appBar: AppBar(
         title: const Text(
           'Información Climática',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontFamily: 'NotoSans',
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, fontFamily: 'NotoSans'),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
@@ -125,7 +122,10 @@ class _ClimateScreenState extends State<ClimateScreen> {
               return _buildNoDataView(context);
             }
 
-            return _buildWeatherView(context, weatherProvider.selectedWeatherData!);
+            return _buildWeatherView(
+              context,
+              weatherProvider.selectedWeatherData!,
+            );
           },
         ),
       ),
@@ -156,7 +156,7 @@ class _ClimateScreenState extends State<ClimateScreen> {
             ),
           ),
           const SizedBox(height: 32),
-          
+
           // Instrucciones para seleccionar ubicación
           Container(
             padding: const EdgeInsets.all(24),
@@ -167,11 +167,7 @@ class _ClimateScreenState extends State<ClimateScreen> {
             ),
             child: Column(
               children: [
-                Icon(
-                  Icons.location_on,
-                  size: 64,
-                  color: Colors.blue.shade600,
-                ),
+                Icon(Icons.location_on, size: 64, color: Colors.blue.shade600),
                 const SizedBox(height: 16),
                 Text(
                   'Selecciona una ubicación',
@@ -184,10 +180,7 @@ class _ClimateScreenState extends State<ClimateScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Toca el botón del mapa para seleccionar cualquier ubicación y obtener información climática detallada',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.blue.shade600,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.blue.shade600),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -205,15 +198,18 @@ class _ClimateScreenState extends State<ClimateScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade600,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Información adicional
           Container(
             padding: const EdgeInsets.all(16),
@@ -296,11 +292,7 @@ class _ClimateScreenState extends State<ClimateScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.location_on,
-                      color: Colors.white,
-                      size: 24,
-                    ),
+                    Icon(Icons.location_on, color: Colors.white, size: 24),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -337,7 +329,7 @@ class _ClimateScreenState extends State<ClimateScreen> {
                           ),
                         ),
                         Text(
-                          '${(weatherData.temperature * 9/5 + 32).round()}°F',
+                          '${(weatherData.temperature * 9 / 5 + 32).round()}°F',
                           style: const TextStyle(
                             fontSize: 16,
                             color: Colors.white70,
@@ -350,10 +342,10 @@ class _ClimateScreenState extends State<ClimateScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
-          // Detalles del clima
+
+          // Detalles del Clima
           Text(
             'Detalles del Clima',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -363,7 +355,7 @@ class _ClimateScreenState extends State<ClimateScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          
+
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -398,9 +390,9 @@ class _ClimateScreenState extends State<ClimateScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Recomendaciones agrícolas
           Container(
             padding: const EdgeInsets.all(16),
@@ -444,9 +436,9 @@ class _ClimateScreenState extends State<ClimateScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Botón para cambiar ubicación
           SizedBox(
             width: double.infinity,
@@ -473,7 +465,12 @@ class _ClimateScreenState extends State<ClimateScreen> {
     );
   }
 
-  Widget _buildDetailCard(String label, String value, IconData icon, Color color) {
+  Widget _buildDetailCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -496,10 +493,7 @@ class _ClimateScreenState extends State<ClimateScreen> {
           ),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color.withOpacity(0.7),
-            ),
+            style: TextStyle(fontSize: 12, color: color.withOpacity(0.7)),
           ),
         ],
       ),
@@ -518,9 +512,9 @@ class _ClimateScreenState extends State<ClimateScreen> {
     final temp = weatherData.temperature;
     final humidity = weatherData.humidity;
     final windSpeed = weatherData.windSpeed;
-    
+
     List<String> recommendations = [];
-    
+
     // Recomendaciones basadas en temperatura
     if (temp < 5) {
       recommendations.add('• Protege los cultivos sensibles al frío');
@@ -531,7 +525,7 @@ class _ClimateScreenState extends State<ClimateScreen> {
     } else if (temp >= 15 && temp <= 25) {
       recommendations.add('• Condiciones ideales para la mayoría de cultivos');
     }
-    
+
     // Recomendaciones basadas en humedad
     if (humidity < 30) {
       recommendations.add('• Humedad baja: aumenta el riego');
@@ -539,17 +533,17 @@ class _ClimateScreenState extends State<ClimateScreen> {
       recommendations.add('• Humedad alta: vigila enfermedades fúngicas');
       recommendations.add('• Mejora la ventilación en invernaderos');
     }
-    
+
     // Recomendaciones basadas en viento
     if (windSpeed > 20) {
       recommendations.add('• Vientos fuertes: protege plantas jóvenes');
     }
-    
+
     if (recommendations.isEmpty) {
       recommendations.add('• Condiciones climáticas estables');
       recommendations.add('• Mantén rutinas normales de cuidado');
     }
-    
+
     return recommendations.join('\n');
   }
 }
