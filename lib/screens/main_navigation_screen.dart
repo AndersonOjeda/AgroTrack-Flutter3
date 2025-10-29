@@ -89,13 +89,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       setState(() {
         _currentIndex = index;
       });
-      
+
       _pageController.animateToPage(
         index,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
-      
+
       _animationController.forward().then((_) {
         _animationController.reverse();
       });
@@ -134,7 +134,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                 final index = entry.key;
                 final item = entry.value;
                 final isSelected = _currentIndex == index;
-                
+
                 return Expanded(
                   child: GestureDetector(
                     onTap: () => _onItemTapped(index),
@@ -145,7 +145,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                         horizontal: 4.0,
                       ),
                       decoration: BoxDecoration(
-                        color: isSelected 
+                        color: isSelected
                             ? item.color.withValues(alpha: 0.1)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
@@ -158,8 +158,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                             child: Icon(
                               isSelected ? item.activeIcon : item.icon,
                               key: ValueKey(isSelected),
-                              color: isSelected 
-                                  ? item.color 
+                              color: isSelected
+                                  ? item.color
                                   : Colors.grey.shade600,
                               size: isSelected ? 26 : 24,
                             ),
@@ -169,11 +169,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                             duration: const Duration(milliseconds: 200),
                             style: TextStyle(
                               fontSize: isSelected ? 12 : 11,
-                              fontWeight: isSelected 
-                                  ? FontWeight.w600 
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
                                   : FontWeight.w500,
-                              color: isSelected 
-                                  ? item.color 
+                              color: isSelected
+                                  ? item.color
                                   : Colors.grey.shade600,
                               fontFamily: 'NotoSans',
                             ),

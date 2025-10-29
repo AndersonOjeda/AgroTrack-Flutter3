@@ -16,23 +16,26 @@ class TaskFormScreen extends StatefulWidget {
 class _TaskFormScreenState extends State<TaskFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _taskService = TaskService(Supabase.instance.client);
-  
+
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
   String _selectedPriority = 'media';
-  
+
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.task?.title ?? '');
-    _descriptionController = TextEditingController(text: widget.task?.description ?? '');
+    _descriptionController = TextEditingController(
+      text: widget.task?.description ?? '',
+    );
     _selectedDate = widget.task?.date ?? DateTime.now();
     _selectedTime = widget.task?.time != null
         ? TimeOfDay(
             hour: int.parse(widget.task!.time.split(':')[0]),
-            minute: int.parse(widget.task!.time.split(':')[1]))
+            minute: int.parse(widget.task!.time.split(':')[1]),
+          )
         : TimeOfDay.now();
     if (widget.task != null) {
       _selectedPriority = widget.task!.priority;
@@ -84,7 +87,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         title: _titleController.text,
         description: _descriptionController.text,
         date: _selectedDate,
-        time: '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+        time:
+            '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
         priority: _selectedPriority,
         status: widget.task?.status ?? 'pendiente',
         userId: user.id,
@@ -190,7 +194,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 height: 48,
                 child: ElevatedButton(
                   onPressed: _saveTask,
-                  child: Text(widget.task == null ? 'Crear Tarea' : 'Actualizar Tarea'),
+                  child: Text(
+                    widget.task == null ? 'Crear Tarea' : 'Actualizar Tarea',
+                  ),
                 ),
               ),
             ],
