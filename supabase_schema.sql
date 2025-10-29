@@ -90,6 +90,10 @@ end $$;
 -- RLS
 alter table if exists public.usuarios enable row level security;
 
+-- Eliminar políticas existentes antes de crearlas
+drop policy if exists "Usuarios viewable by owner" on public.usuarios;
+drop policy if exists "Usuarios manageable by owner" on public.usuarios;
+
 create policy "Usuarios viewable by owner" on public.usuarios
   for select using (auth.uid() = auth_user_id);
 create policy "Usuarios manageable by owner" on public.usuarios
@@ -511,6 +515,12 @@ create table if not exists public.farm_locations (
 -- Habilitar RLS para la tabla de ubicaciones de fincas
 alter table if exists public.farm_locations enable row level security;
 
+-- Eliminar políticas existentes antes de crearlas
+drop policy if exists "Farm locations viewable by owner" on public.farm_locations;
+drop policy if exists "Farm locations insertable by owner" on public.farm_locations;
+drop policy if exists "Farm locations updatable by owner" on public.farm_locations;
+drop policy if exists "Farm locations deletable by owner" on public.farm_locations;
+
 -- Política para que los usuarios solo vean sus propias ubicaciones
 create policy "Farm locations viewable by owner" on public.farm_locations
   for select using (
@@ -550,6 +560,12 @@ create policy "Farm locations deletable by owner" on public.farm_locations
 -- Habilitar RLS para la tabla de inventario
 alter table if exists public.inventory_items enable row level security;
 
+-- Eliminar políticas existentes antes de crearlas
+drop policy if exists "Inventory items viewable by owner" on public.inventory_items;
+drop policy if exists "Inventory items insertable by owner" on public.inventory_items;
+drop policy if exists "Inventory items updatable by owner" on public.inventory_items;
+drop policy if exists "Inventory items deletable by owner" on public.inventory_items;
+
 -- Política para que los usuarios solo vean sus propios items
 create policy "Inventory items viewable by owner" on public.inventory_items
   for select using (
@@ -581,6 +597,18 @@ create policy "Inventory items deletable by owner" on public.inventory_items
       select id from public.usuarios where auth_user_id = auth.uid()
     )
   );
+
+-- =====================================================
+-- TRIGGERS PARA UBICACIONES DE FINCAS
+-- =====================================================
+
+-- Trigger para actualizar updated_at automáticamente en farm_locations
+drop trigger if exists farm_locations_set_updated_at on public.farm_locations;
+create trigger farm_locations_set_updated_at
+  before update on public.farm_locations
+  for each row execute function public.set_updated_at();
+
+
 
 -- =====================================================
 -- TRIGGERS PARA INVENTARIO
@@ -735,6 +763,91 @@ grant execute on function public.get_low_stock_items() to authenticated;
 grant execute on function public.get_expiring_items(integer) to authenticated;
 
 -- =====================================================
+-- TABLA DE CONFIGURACIONES DE LA APLICACIÓN
+-- =====================================================
+-- 
+-- Almacena configuraciones específicas del usuario para la aplicación
+-- Incluye preferencias como ubicación actual del clima, configuraciones de notificaciones, etc.
+-- =====================================================
+
+create table if not exists public.app_settings (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.usuarios(id) on delete cascade,
+  setting_key varchar(100) not null,
+  setting_value text,
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now(),
+  unique(user_id, setting_key)
+);
+
+-- =====================================================
+-- CONFIGURACIÓN DE SEGURIDAD PARA CONFIGURACIONES DE LA APP (RLS)
+-- =====================================================
+
+-- Habilitar RLS para la tabla de configuraciones
+alter table if exists public.app_settings enable row level security;
+
+-- Eliminar políticas existentes antes de crearlas
+drop policy if exists "App settings viewable by owner" on public.app_settings;
+drop policy if exists "App settings insertable by owner" on public.app_settings;
+drop policy if exists "App settings updatable by owner" on public.app_settings;
+drop policy if exists "App settings deletable by owner" on public.app_settings;
+
+-- Política para que los usuarios solo vean sus propias configuraciones
+create policy "App settings viewable by owner" on public.app_settings
+  for select using (
+    user_id in (
+      select id from public.usuarios where auth_user_id = auth.uid()
+    )
+  );
+
+-- Política para que los usuarios solo puedan insertar sus propias configuraciones
+create policy "App settings insertable by owner" on public.app_settings
+  for insert with check (
+    user_id in (
+      select id from public.usuarios where auth_user_id = auth.uid()
+    )
+  );
+
+-- Política para que los usuarios solo puedan actualizar sus propias configuraciones
+create policy "App settings updatable by owner" on public.app_settings
+  for update using (
+    user_id in (
+      select id from public.usuarios where auth_user_id = auth.uid()
+    )
+  );
+
+-- Política para que los usuarios solo puedan eliminar sus propias configuraciones
+create policy "App settings deletable by owner" on public.app_settings
+  for delete using (
+    user_id in (
+      select id from public.usuarios where auth_user_id = auth.uid()
+    )
+  );
+
+-- =====================================================
+-- TRIGGERS PARA ACTUALIZACIÓN AUTOMÁTICA DE TIMESTAMPS
+-- =====================================================
+
+-- Trigger para actualizar updated_at automáticamente en farm_locations
+drop trigger if exists farm_locations_set_updated_at on public.farm_locations;
+create trigger farm_locations_set_updated_at
+  before update on public.farm_locations
+  for each row execute function public.set_updated_at();
+
+-- Trigger para actualizar updated_at automáticamente en app_settings
+drop trigger if exists app_settings_set_updated_at on public.app_settings;
+create trigger app_settings_set_updated_at
+  before update on public.app_settings
+  for each row execute function public.set_updated_at();
+
+-- Trigger para actualizar updated_at automáticamente en inventory_items
+drop trigger if exists inventory_items_set_updated_at on public.inventory_items;
+create trigger inventory_items_set_updated_at
+  before update on public.inventory_items
+  for each row execute function public.set_updated_at();
+
+-- =====================================================
 -- ÍNDICES PARA OPTIMIZACIÓN DE RENDIMIENTO
 -- =====================================================
 
@@ -744,6 +857,16 @@ create index if not exists idx_usuarios_email on public.usuarios(email);
 create index if not exists idx_usuarios_activo on public.usuarios(activo);
 create index if not exists idx_usuarios_fecha_registro on public.usuarios(fecha_registro);
 create index if not exists idx_usuarios_activo_fecha on public.usuarios(activo, fecha_registro desc);
+
+-- Índices para tabla farm_locations
+create index if not exists idx_farm_locations_user_id on public.farm_locations(user_id);
+create index if not exists idx_farm_locations_created_at on public.farm_locations(created_at);
+create index if not exists idx_farm_locations_coordinates on public.farm_locations(latitude, longitude);
+
+-- Índices para tabla app_settings
+create index if not exists idx_app_settings_user_id on public.app_settings(user_id);
+create index if not exists idx_app_settings_key on public.app_settings(setting_key);
+create index if not exists idx_app_settings_user_key on public.app_settings(user_id, setting_key);
 
 -- Índices para tabla inventory_items
 create index if not exists idx_inventory_items_user_id on public.inventory_items(user_id);

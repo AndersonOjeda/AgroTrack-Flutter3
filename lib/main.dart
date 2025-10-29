@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart';
 import 'screens/auth_gate.dart';
 import 'screens/email_confirmation_screen.dart';
 import 'screens/profile_screen.dart';
@@ -13,6 +14,7 @@ import 'screens/debug_screen.dart';
 import 'services/database_service.dart';
 import 'services/supabase_service.dart';
 import 'services/user_service.dart';
+import 'services/weather_state_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,23 +43,26 @@ class TranslatorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Chat Agrícola',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color.fromARGB(255, 206, 145, 32),
+    return ChangeNotifierProvider(
+      create: (context) => WeatherStateProvider(),
+      child: MaterialApp(
+        title: 'Chat Agrícola',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color.fromARGB(255, 206, 145, 32),
+          ),
+          useMaterial3: true,
         ),
-        useMaterial3: true,
+        home: const AuthGate(),
+        routes: {
+            '/profile': (context) => const ProfileScreen(),
+            '/edit-profile': (context) => const EditProfileScreen(),
+            '/settings': (context) => const SettingsScreen(),
+            '/debug': (context) => const DebugScreen(),
+            '/email-confirmation': (context) => const EmailConfirmationScreen(),
+          },
       ),
-      home: const AuthGate(),
-      routes: {
-          '/profile': (context) => const ProfileScreen(),
-          '/edit-profile': (context) => const EditProfileScreen(),
-          '/settings': (context) => const SettingsScreen(),
-          '/debug': (context) => const DebugScreen(),
-          '/email-confirmation': (context) => const EmailConfirmationScreen(),
-        },
     );
   }
 }

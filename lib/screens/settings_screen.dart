@@ -12,7 +12,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   bool _pushNotifications = true;
   bool _emailNotifications = false;
-  bool _weatherAlerts = true;
+
   bool _taskReminders = true;
 
   String _selectedTheme = 'system'; // system, light, dark
@@ -79,17 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       });
                     },
                   ),
-                  _buildSwitchTile(
-                    'Alertas del Clima',
-                    'Notificaciones sobre cambios climáticos',
-                    Icons.cloud,
-                    _weatherAlerts,
-                    (value) {
-                      setState(() {
-                        _weatherAlerts = value;
-                      });
-                    },
-                  ),
+
                   _buildSwitchTile(
                     'Recordatorios de Tareas',
                     'Alertas sobre tareas pendientes',

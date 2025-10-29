@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../services/user_service.dart';
+import '../services/logger_service.dart';
+import '../services/weather_state_provider.dart';
+import '../widgets/simple_weather_widget.dart';
 import 'chat_bot.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -37,85 +41,94 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = await UserService.getCurrentUser();
     setState(() {
       _userName = user?.nombre ?? 'Usuario';
-      _userLocation = user?.ubicacion ?? 'Ubicación no disponible';
+      // Inicializar con la ubicación del usuario, pero se actualizará con el clima
+      _userLocation = user?.ubicacion ?? 'Obteniendo ubicación...';
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Sección superior (mitad de la pantalla)
-            Expanded(
-              flex: 1,
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    // Imagen de fondo del campo
-                    Container(
-                      width: double.infinity,
-                      height: double.infinity,
-                      decoration: const BoxDecoration(
-                        image: DecorationImage(
-                          image: NetworkImage(
-                            'https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2532&q=80',
+    return Consumer<WeatherStateProvider>(
+      builder: (context, weatherProvider, child) {
+        // Sincronizar la ubicación con el clima cuando esté disponible
+        String displayLocation = _userLocation;
+        if (weatherProvider.hasWeatherData && weatherProvider.currentLocation.isNotEmpty) {
+          displayLocation = weatherProvider.currentLocation;
+        }
+
+        return Scaffold(
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Sección superior (mitad de la pantalla)
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Imagen de fondo del campo
+                        Container(
+                          width: double.infinity,
+                          height: double.infinity,
+                          decoration: const BoxDecoration(
+                            image: DecorationImage(
+                              image: NetworkImage(
+                                'https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2532&q=80',
+                              ),
+                              fit: BoxFit.cover,
+                              opacity: 0.3,
+                            ),
                           ),
-                          fit: BoxFit.cover,
-                          opacity: 0.3,
                         ),
-                      ),
-                    ),
-                    // Overlay con gradiente
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.3),
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.5),
-                          ],
+                        // Overlay con gradiente
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.3),
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.5),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    // Contenido de la sección superior
-                    Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Cabecera con ubicación
-                          Row(
+                        // Contenido de la sección superior
+                        Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(
-                                Icons.location_on,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _userLocation,
-                                  style: const TextStyle(
+                              // Cabecera con ubicación sincronizada
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_on,
                                     color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
+                                    size: 20,
                                   ),
-                                ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      displayLocation,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
                           const SizedBox(height: 30),
 
                           // Saludo personalizado
@@ -193,75 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const SizedBox(height: 12),
 
                                 // Widget del clima
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.wb_sunny,
-                                        color: Colors.orange,
-                                        size: 24,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              '24°C - Soleado',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                            Text(
-                                              'Ideal para actividades agrícolas',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.black54,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.shade100,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          'Óptimo',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.green.shade700,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                const SimpleWeatherWidget(),
                               ],
                             ),
                           ),
@@ -351,6 +296,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+      },
     );
   }
 

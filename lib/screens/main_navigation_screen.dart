@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import 'inventory_screen.dart';
-import 'weather_screen.dart';
 import 'chat_bot.dart';
 import 'profile_screen.dart';
 import 'tasks_screen.dart';
@@ -25,7 +24,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     const WeatherScreen(),
     const TasksScreen(),
     const ChatBot(),
-    const ProfileScreen(),
+    const SettingsScreen(),
   ];
 
   final List<NavigationItem> _navigationItems = [

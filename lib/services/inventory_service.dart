@@ -51,12 +51,30 @@ class InventoryService {
       
       // Insertar en la base de datos local
       await db.insert(_tableName, item.toMap());
+      developer.log('Item creado localmente: ${item.id}', name: 'InventoryService');
       
       // Marcar para sincronización
       await _markForSync(item.id!);
       
       // Intentar sincronizar inmediatamente si hay conexión
-      await _syncService.syncItem(item);
+      try {
+        final syncSuccess = await _syncService.syncItem(item);
+        if (syncSuccess) {
+          developer.log('Item sincronizado exitosamente: ${item.id}', name: 'InventoryService');
+          // Marcar como sincronizado
+          await db.update(
+            _tableName,
+            {'needs_sync': 0},
+            where: 'id = ?',
+            whereArgs: [item.id],
+          );
+        } else {
+          developer.log('Sincronización falló, item marcado para sync posterior: ${item.id}', name: 'InventoryService');
+        }
+      } catch (syncError) {
+        developer.log('Error en sincronización inmediata: $syncError', name: 'InventoryService');
+        // No fallar la creación por problemas de sincronización
+      }
       
       return item.id;
     } catch (e) {
@@ -113,11 +131,30 @@ class InventoryService {
       );
 
       if (count > 0) {
+        developer.log('Item actualizado localmente: ${item.id}', name: 'InventoryService');
+        
         // Marcar para sincronización
         await _markForSync(item.id!);
         
         // Intentar sincronizar inmediatamente si hay conexión
-        await _syncService.syncItem(item);
+        try {
+          final syncSuccess = await _syncService.syncItem(item);
+          if (syncSuccess) {
+            developer.log('Item actualizado y sincronizado: ${item.id}', name: 'InventoryService');
+            // Marcar como sincronizado
+            await db.update(
+              _tableName,
+              {'needs_sync': 0},
+              where: 'id = ?',
+              whereArgs: [item.id],
+            );
+          } else {
+            developer.log('Actualización local exitosa, sincronización pendiente: ${item.id}', name: 'InventoryService');
+          }
+        } catch (syncError) {
+          developer.log('Error en sincronización de actualización: $syncError', name: 'InventoryService');
+          // No fallar la actualización por problemas de sincronización
+        }
         
         return true;
       }
@@ -140,8 +177,21 @@ class InventoryService {
       );
 
       if (count > 0) {
-        // Eliminar de Supabase también
-        await _syncService.deleteItemFromSupabase(id);
+        developer.log('Item eliminado localmente: $id', name: 'InventoryService');
+        
+        // Intentar eliminar de Supabase también
+        try {
+          final syncSuccess = await _syncService.deleteItemFromSupabase(id);
+          if (syncSuccess) {
+            developer.log('Item eliminado de Supabase: $id', name: 'InventoryService');
+          } else {
+            developer.log('Error eliminando de Supabase, pero eliminación local exitosa: $id', name: 'InventoryService');
+          }
+        } catch (syncError) {
+          developer.log('Error en sincronización de eliminación: $syncError', name: 'InventoryService');
+          // No fallar la eliminación local por problemas de sincronización
+        }
+        
         return true;
       }
       return false;
