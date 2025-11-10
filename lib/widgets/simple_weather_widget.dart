@@ -164,7 +164,7 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
       );
 
       if (weatherData != null) {
-        weatherProvider.updateSelectedWeather(weatherData);
+        weatherProvider.updateWeather(weatherData, locationName);
       } else {
         weatherProvider.setError('No se pudieron obtener los datos del clima');
       }
@@ -192,7 +192,7 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
         );
 
         if (weatherData != null) {
-          weatherProvider.updateSelectedWeather(weatherData);
+          weatherProvider.updateWeather(weatherData, query);
         } else {
           weatherProvider.setError('No se pudieron obtener los datos del clima para esta ubicación');
         }

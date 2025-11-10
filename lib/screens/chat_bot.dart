@@ -639,52 +639,57 @@ class _ChatBotState extends State<ChatBot> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(child: Text(msg.text)),
+                            Expanded(
+                              child: Text(
+                                msg.text,
+                                softWrap: true,
+                                overflow: TextOverflow.visible,
+                              ),
+                            ),
                             // Flechas de navegación para versiones de preguntas editadas
                             if (msg.isUser && _questionVersions.containsKey(msg.id) && 
                                 (_questionVersions[msg.id]?.length ?? 0) > 1)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[200],
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        InkWell(
-                                          onTap: () => _navigateQuestionVersion(msg.id, false),
-                                          child: const Icon(
-                                            Icons.arrow_back_ios,
-                                            size: 12,
-                                            color: Colors.blue,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${(_currentQuestionVersionIndex[msg.id] ?? 0) + 1}/${_questionVersions[msg.id]?.length ?? 1}',
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        InkWell(
-                                          onTap: () => _navigateQuestionVersion(msg.id, true),
-                                          child: const Icon(
-                                            Icons.arrow_forward_ios,
-                                            size: 12,
-                                            color: Colors.blue,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                ],
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      InkWell(
+                                        onTap: () => _navigateQuestionVersion(msg.id, false),
+                                        child: const Icon(
+                                          Icons.arrow_back_ios,
+                                          size: 12,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${(_currentQuestionVersionIndex[msg.id] ?? 0) + 1}/${_questionVersions[msg.id]?.length ?? 1}',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      InkWell(
+                                        onTap: () => _navigateQuestionVersion(msg.id, true),
+                                        child: const Icon(
+                                          Icons.arrow_forward_ios,
+                                          size: 12,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                           ],
                         ),

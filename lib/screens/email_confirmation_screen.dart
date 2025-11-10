@@ -38,6 +38,10 @@ class _EmailConfirmationScreenState extends State<EmailConfirmationScreen> {
     });
 
     try {
+      // Ejecutar diagnósticos antes del reenvío
+      await EmailService.diagnosticSupabaseConfig();
+      await EmailService.testSupabaseConnection();
+      
       final success = await EmailService.resendConfirmationEmail(_emailController.text);
       setState(() {
         _isResending = false;
@@ -91,10 +95,10 @@ class _EmailConfirmationScreenState extends State<EmailConfirmationScreen> {
                       ),
                       keyboardType: TextInputType.emailAddress,
                     ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
                         onPressed: _isResending ? null : _resendConfirmationEmail,
                         icon: _isResending
                             ? const SizedBox(
@@ -102,12 +106,10 @@ class _EmailConfirmationScreenState extends State<EmailConfirmationScreen> {
                                 height: 16,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Icon(Icons.send),
-                        label: Text(_isResending ? 'Enviando...' : 'Reenviar Email de Confirmación'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2d5a27),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                            : const Icon(Icons.refresh),
+                        label: Text(_isResending ? 'Enviando…' : 'Reenviar confirmación'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF2d5a27),
                         ),
                       ),
                     ),

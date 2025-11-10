@@ -61,6 +61,8 @@ dependencies:
   latlong2: ^0.9.1
   # Para obtener datos del clima
   dio: ^5.7.0
+  # Para deep linking y manejo de URLs (temporalmente deshabilitado)
+  # app_links: ^6.3.2
 
 dev_dependencies:
   flutter_test:

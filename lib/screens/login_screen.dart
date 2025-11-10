@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/supabase_service.dart';
+import '../usecases/sign_in_use_case.dart';
+import '../services/auth_repository.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -38,11 +38,16 @@ class _LoginScreenState extends State<LoginScreen>
   String? _emailError;
   String? _passwordError;
 
+  // Caso de uso para login (Clean Architecture / Repository pattern)
+  late final SignInUseCase _signInUseCase;
+
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
     _setupFocusListeners();
+    // Inicializar caso de uso con repositorio de autenticación
+    _signInUseCase = SignInUseCase(authRepository: SupabaseAuthRepository());
   }
 
   void _initializeAnimations() {
@@ -97,10 +102,10 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() {
       if (value.isEmpty) {
         _emailValid = false;
-        _emailError = 'El correo es requerido';
+        _emailError = 'Email is required';
       } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
         _emailValid = false;
-        _emailError = 'Ingresa un correo válido';
+        _emailError = 'Enter a valid email';
       } else {
         _emailValid = true;
         _emailError = null;
@@ -112,10 +117,10 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() {
       if (value.isEmpty) {
         _passwordValid = false;
-        _passwordError = 'La contraseña es requerida';
+        _passwordError = 'Password is required';
       } else if (value.length < 6) {
         _passwordValid = false;
-        _passwordError = 'Mínimo 6 caracteres';
+        _passwordError = 'Minimum 6 characters';
       } else {
         _passwordValid = true;
         _passwordError = null;
@@ -129,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen>
     _validatePassword(_passwordController.text);
 
     if (!_emailValid || !_passwordValid) {
-      _showError('Por favor corrige los errores en el formulario');
+      _showError('Please correct the errors in the form');
       return;
     }
 
@@ -144,18 +149,15 @@ class _LoginScreenState extends State<LoginScreen>
     final password = _passwordController.text;
 
     try {
-      await SupabaseService.client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-
-      // Success animation
-      _showSuccess('¡Bienvenido de vuelta!');
-    } on AuthException catch (e) {
-      String errorMessage = _getLocalizedError(e.message);
-      _showError(errorMessage);
+      final result = await _signInUseCase.execute(email: email, password: password);
+      if (result.isSuccess) {
+        _showSuccess('Welcome back!');
+      } else {
+        final msg = result.error ?? 'Error signing in. Please try again.';
+        _showError(_getLocalizedError(msg));
+      }
     } catch (e) {
-      _showError('Error de conexión. Verifica tu internet.');
+      _showError('Connection error. Check your internet.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -163,13 +165,13 @@ class _LoginScreenState extends State<LoginScreen>
 
   String _getLocalizedError(String error) {
     if (error.contains('Invalid login credentials')) {
-      return 'Credenciales incorrectas. Verifica tu correo y contraseña.';
+      return 'Incorrect credentials. Check your email and password.';
     } else if (error.contains('Email not confirmed')) {
-      return 'Confirma tu correo electrónico antes de iniciar sesión.';
+      return 'Confirm your email before signing in.';
     } else if (error.contains('Too many requests')) {
-      return 'Demasiados intentos. Espera un momento antes de intentar nuevamente.';
+      return 'Too many attempts. Wait a moment before trying again.';
     }
-    return 'Error al iniciar sesión. Inténtalo nuevamente.';
+    return 'Error signing in. Please try again.';
   }
 
   void _showError(String message) {
@@ -216,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
-                    'Éxito',
+                    'Success',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   Text(message, style: const TextStyle(fontSize: 14)),
@@ -352,7 +354,7 @@ class _LoginScreenState extends State<LoginScreen>
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
-                                            'Tu compañero en el campo',
+                                            'Your companion in the field',
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .bodyLarge
@@ -381,8 +383,8 @@ class _LoginScreenState extends State<LoginScreen>
                                     }
                                   },
                                   decoration: InputDecoration(
-                                    labelText: 'Correo electrónico',
-                                    hintText: 'ejemplo@correo.com',
+                                    labelText: 'Email',
+                                    hintText: 'example@email.com',
                                     prefixIcon: Icon(
                                       Icons.email_outlined,
                                       color: _emailValid
@@ -461,8 +463,8 @@ class _LoginScreenState extends State<LoginScreen>
                                     }
                                   },
                                   decoration: InputDecoration(
-                                    labelText: 'Contraseña',
-                                    hintText: 'Mínimo 6 caracteres',
+                                    labelText: 'Password',
+                                    hintText: 'Minimum 6 characters',
                                     prefixIcon: Icon(
                                       Icons.lock_outline,
                                       color: _passwordValid
@@ -579,7 +581,7 @@ class _LoginScreenState extends State<LoginScreen>
                                               ),
                                               const SizedBox(width: 16),
                                               const Text(
-                                                'Iniciando sesión...',
+                                                'Signing in...',
                                                 style: TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w600,
@@ -594,7 +596,7 @@ class _LoginScreenState extends State<LoginScreen>
                                               Icon(Icons.login, size: 24),
                                               SizedBox(width: 12),
                                               Text(
-                                                'Iniciar Sesión',
+                                                'Sign In',
                                                 style: TextStyle(
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.bold,
@@ -630,7 +632,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       horizontal: 20,
                                     ),
                                     child: Text(
-                                      'o',
+                                      'or',
                                       style: TextStyle(
                                         color: Colors.grey.shade600,
                                         fontSize: 16,
@@ -710,17 +712,22 @@ class _LoginScreenState extends State<LoginScreen>
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                   ),
-                                  child: const Row(
+                                  child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.person_add, size: 24),
-                                      SizedBox(width: 12),
-                                      Text(
-                                        'Únete a AgroTrack',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: 0.5,
+                                      const Icon(Icons.person_add, size: 22),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          'Join AgroTrack',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.3,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
                                         ),
                                       ),
                                     ],

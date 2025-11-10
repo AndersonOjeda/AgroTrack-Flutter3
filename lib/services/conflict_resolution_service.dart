@@ -86,7 +86,7 @@ class ConflictResolutionService {
     if (local.fechaNacimiento != remote.fechaNacimiento) conflicts.add('fechaNacimiento');
     if (local.experienciaAgricola != remote.experienciaAgricola) conflicts.add('experienciaAgricola');
     if (local.tamanoFinca != remote.tamanoFinca) conflicts.add('tamanoFinca');
-    if (local.tipoAgricultura != remote.tipoAgricultura) conflicts.add('tipoAgricultura');
+    if (local.primaryCrops != remote.primaryCrops) conflicts.add('primaryCrops');
     if (local.emailConfirmado != remote.emailConfirmado) conflicts.add('emailConfirmado');
     
     return conflicts;
@@ -152,7 +152,7 @@ class ConflictResolutionService {
       fechaNacimiento: _chooseBestDateTime(local.fechaNacimiento, remote.fechaNacimiento),
       experienciaAgricola: _chooseBestValue(local.experienciaAgricola, remote.experienciaAgricola),
       tamanoFinca: _chooseBestValue(local.tamanoFinca, remote.tamanoFinca),
-      tipoAgricultura: _chooseBestValue(local.tipoAgricultura, remote.tipoAgricultura),
+      primaryCrops: _chooseBestValue(local.primaryCrops, remote.primaryCrops),
       emailConfirmado: remote.emailConfirmado || local.emailConfirmado, // Mantener confirmación
       createdAt: local.createdAt ?? remote.createdAt,
       updatedAt: DateTime.now(),

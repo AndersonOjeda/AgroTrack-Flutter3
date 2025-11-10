@@ -133,7 +133,10 @@ class SyncService {
       final data = item['data'] != null ? jsonDecode(item['data']) : null;
 
       switch (tableName) {
+        case 'users':
+          return await _syncUser(operation, data);
         case 'usuarios':
+          // Compatibilidad: tratar entradas antiguas como 'users'
           return await _syncUser(operation, data);
         default:
           LoggerService.warning('Tabla no soportada para sincronización: $tableName');
@@ -150,17 +153,28 @@ class SyncService {
     if (userData == null) return false;
 
     try {
+      // Ensure correct mapping for Supabase: include auth_user_id/email
+      final currentAuthUser = _supabase.auth.currentUser;
+      if (currentAuthUser != null) {
+        userData['auth_user_id'] = currentAuthUser.id;
+        userData['email'] = userData['email'] ?? currentAuthUser.email;
+      }
+
+      // Determine conflict target for upsert
+      final String conflictTarget =
+          currentAuthUser != null ? 'auth_user_id' : 'email';
+
       switch (operation) {
         case 'INSERT':
         case 'UPDATE':
           final response = await _supabase
-              .from('usuarios')
-              .upsert(userData)
+              .from('users')
+              .upsert(userData, onConflict: conflictTarget)
               .select();
           return response.isNotEmpty;
         case 'DELETE':
           await _supabase
-              .from('usuarios')
+              .from('users')
               .delete()
               .eq('id', userData['id']);
           return true;
@@ -181,7 +195,7 @@ class SyncService {
       }
       final lastSync = await _getLastSyncTimestamp();
       final response = await _supabase
-          .from('usuarios')
+          .from('users')
           .select('*')
           .gte('updated_at', lastSync.toIso8601String())
           .order('updated_at', ascending: true);
@@ -209,7 +223,7 @@ class SyncService {
       await _updateLastSyncTimestamp(DateTime.now());
       return SyncResult(
         success: true,
-        message: 'Descarga: $syncedCount usuarios sincronizados'
+        message: 'Descarga: $syncedCount users synchronized'
       );
     } catch (e) {
       return SyncResult(success: false, message: 'Error descargando cambios: $e');
@@ -280,9 +294,18 @@ class SyncService {
         return SyncResult(success: false, message: 'Supabase no inicializado');
       }
       final data = user.toJson();
+      // Ensure auth_user_id/email are present to target the correct row
+      final currentAuthUser = _supabase.auth.currentUser;
+      if (currentAuthUser != null) {
+        data['auth_user_id'] = currentAuthUser.id;
+        data['email'] = data['email'] ?? currentAuthUser.email;
+      }
+      final String conflictTarget =
+          currentAuthUser != null ? 'auth_user_id' : 'email';
+
       final response = await _supabase
-          .from('usuarios')
-          .upsert(data)
+          .from('users')
+          .upsert(data, onConflict: conflictTarget)
           .select();
 
       if (response.isNotEmpty) {

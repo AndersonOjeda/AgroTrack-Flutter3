@@ -12,7 +12,7 @@ class InventoryDebugService {
       result['supabase_status'] = SupabaseService.isReady;
       
       if (!SupabaseService.isReady) {
-        result['error_message'] = 'Supabase no está inicializado';
+        result['error_message'] = 'Supabase is not initialized';
         result['user_authenticated'] = false;
         result['usuarios_table_exists'] = false;
         result['inventory_table_exists'] = false;
@@ -27,7 +27,7 @@ class InventoryDebugService {
       result['user_authenticated'] = currentUser != null;
       
       if (currentUser == null) {
-        result['error_message'] = 'Usuario no autenticado';
+        result['error_message'] = 'User not authenticated';
         result['usuarios_table_exists'] = false;
         result['inventory_table_exists'] = false;
         result['supabase_item_count'] = -1;
@@ -36,10 +36,10 @@ class InventoryDebugService {
         return result;
       }
       
-      // 3. Verificar tabla usuarios
+      // 3. Verificar tabla users
       try {
         await SupabaseService.client
-            .from('usuarios')
+            .from('users')
             .select('id')
             .limit(1);
         result['usuarios_table_exists'] = true;
@@ -101,7 +101,7 @@ class InventoryDebugService {
       result['supabase_ready'] = SupabaseService.isReady;
       
       if (!SupabaseService.isReady) {
-        result['error'] = 'Supabase no está inicializado';
+        result['error'] = 'Supabase is not initialized';
         return result;
       }
       
@@ -112,14 +112,14 @@ class InventoryDebugService {
       result['user_email'] = currentUser?.email;
       
       if (currentUser == null) {
-        result['error'] = 'Usuario no autenticado';
+        result['error'] = 'User not authenticated';
         return result;
       }
       
-      // 3. Verificar si existe el usuario en la tabla usuarios
+      // 3. Verificar si existe el usuario en la tabla users
       try {
         final userResponse = await SupabaseService.client
-            .from('usuarios')
+            .from('users')
             .select('id')
             .eq('auth_user_id', currentUser.id)
             .maybeSingle();
@@ -230,9 +230,9 @@ class InventoryDebugService {
     }
     
     try {
-      // Verificar si el usuario ya existe
+      // Verificar si el usuario ya existe en users
       final existingUser = await SupabaseService.client
-          .from('usuarios')
+          .from('users')
           .select('id')
           .eq('auth_user_id', currentUser.id)
           .maybeSingle();
@@ -243,18 +243,18 @@ class InventoryDebugService {
       
       // Crear el usuario
       await SupabaseService.client
-          .from('usuarios')
+          .from('users')
           .insert({
             'auth_user_id': currentUser.id,
             'email': currentUser.email ?? '',
-            'nombre': currentUser.userMetadata?['nombre'] ?? 'Usuario',
-            'apellido': currentUser.userMetadata?['apellido'] ?? '',
-            'email_confirmado': currentUser.emailConfirmedAt != null,
+            'first_name': currentUser.userMetadata?['first_name'] ?? currentUser.userMetadata?['nombre'] ?? 'User',
+            'last_name': currentUser.userMetadata?['last_name'] ?? currentUser.userMetadata?['apellido'] ?? '',
+            'email_confirmed': currentUser.emailConfirmedAt != null,
           });
       
       return true;
     } catch (e) {
-      developer.log('Error creando usuario: $e', name: 'InventoryDebugService');
+      developer.log('Error creating user: $e', name: 'InventoryDebugService');
       return false;
     }
   }

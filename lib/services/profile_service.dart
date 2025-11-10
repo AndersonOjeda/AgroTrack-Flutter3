@@ -7,7 +7,7 @@ class ProfileService {
   static final SupabaseClient _client = Supabase.instance.client;
   static UserModel? _currentUser;
 
-  /// Obtener el usuario actual con tolerancia a faltantes en la tabla usuarios
+  /// Obtener el usuario actual con tolerancia a faltantes en la tabla users
   static Future<UserModel?> getCurrentUser() async {
     if (_currentUser != null) return _currentUser;
     
@@ -26,10 +26,10 @@ class ProfileService {
         return null;
       }
 
-      // 1) Buscar por auth_user_id
+      // 1) Buscar por auth_user_id en tabla users
       LoggerService.info('Buscando usuario por auth_user_id: ${authUser.id}');
       Map<String, dynamic>? response = await _client
-          .from('usuarios')
+          .from('users')
           .select('*')
           .eq('auth_user_id', authUser.id)
           .maybeSingle()
@@ -41,7 +41,7 @@ class ProfileService {
       if (response == null && authUser.email != null) {
         LoggerService.info('Buscando usuario por email: ${authUser.email}');
         response = await _client
-            .from('usuarios')
+            .from('users')
             .select('*')
             .eq('email', authUser.email!)
             .maybeSingle()
@@ -56,9 +56,9 @@ class ProfileService {
         final insertData = {
           'auth_user_id': authUser.id,
           'email': authUser.email,
-          'nombre': authUser.userMetadata?['nombre'] ?? (authUser.email?.split('@')[0] ?? 'Usuario'),
-          'apellido': authUser.userMetadata?['apellido'] ?? '',
-          'email_confirmado': authUser.emailConfirmedAt != null,
+          'first_name': authUser.userMetadata?['first_name'] ?? authUser.userMetadata?['nombre'] ?? (authUser.email?.split('@')[0] ?? 'User'),
+          'last_name': authUser.userMetadata?['last_name'] ?? authUser.userMetadata?['apellido'] ?? '',
+          'email_confirmed': authUser.emailConfirmedAt != null,
           'created_at': DateTime.now().toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
         };
@@ -67,7 +67,7 @@ class ProfileService {
         
         try {
           response = await _client
-              .from('usuarios')
+              .from('users')
               .upsert(insertData, onConflict: 'auth_user_id')
               .select()
               .maybeSingle()
@@ -75,15 +75,15 @@ class ProfileService {
           
           LoggerService.info('Usuario creado exitosamente: ${response != null}');
         } catch (e) {
-          LoggerService.error('Fallo al crear registro en usuarios', error: e);
+          LoggerService.error('Fallo al crear registro en users', error: e);
           
           // Crear un usuario temporal con datos mínimos para que la app funcione
           LoggerService.info('Creando usuario temporal para continuar...');
           _currentUser = UserModel(
             id: authUser.id,
             email: authUser.email ?? '',
-            nombre: authUser.userMetadata?['nombre'] ?? authUser.email?.split('@')[0] ?? 'Usuario',
-            apellido: authUser.userMetadata?['apellido'] ?? '',
+            nombre: authUser.userMetadata?['first_name'] ?? authUser.userMetadata?['nombre'] ?? authUser.email?.split('@')[0] ?? 'User',
+            apellido: authUser.userMetadata?['last_name'] ?? authUser.userMetadata?['apellido'] ?? '',
             emailConfirmado: authUser.emailConfirmedAt != null,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
@@ -112,7 +112,7 @@ class ProfileService {
         _currentUser = UserModel(
           id: authUser.id,
           email: authUser.email ?? '',
-          nombre: authUser.email?.split('@')[0] ?? 'Usuario',
+          nombre: authUser.email?.split('@')[0] ?? 'User',
           apellido: '',
           emailConfirmado: authUser.emailConfirmedAt != null,
           createdAt: DateTime.now(),
@@ -137,15 +137,28 @@ class ProfileService {
 
       LoggerService.info('Iniciando actualización de perfil para usuario: ${authUser.id}');
 
-      // Preparar datos para actualización/upsert
-      final updateData = updatedUser.toJson();
-      updateData['auth_user_id'] = authUser.id; // asegurar vínculo
-      updateData.remove('id'); // Evitar colisión con PK si es nulo
-      updateData['updated_at'] = DateTime.now().toIso8601String();
+      // Preparar datos para actualización/upsert en tabla 'users' (claves en inglés)
+      final updateData = <String, dynamic>{
+        'auth_user_id': authUser.id,
+        'email': updatedUser.email,
+        'first_name': updatedUser.nombre,
+        'last_name': updatedUser.apellido,
+        'phone': updatedUser.telefono,
+        'location': updatedUser.ubicacion,
+        'bio': updatedUser.bio,
+        'profile_image_url': updatedUser.profileImageUrl,
+        'birth_date': updatedUser.fechaNacimiento?.toIso8601String(),
+        'farming_experience': updatedUser.experienciaAgricola,
+        'farm_size': updatedUser.tamanoFinca,
+        'primary_crops': updatedUser.primaryCrops,
+        'email_confirmed': updatedUser.emailConfirmado,
+        'created_at': updatedUser.createdAt?.toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      };
 
       // Comprobar si ya existe registro para este auth_user_id
       final existing = await _client
-          .from('usuarios')
+          .from('users')
           .select('id')
           .eq('auth_user_id', authUser.id)
           .maybeSingle()
@@ -158,25 +171,25 @@ class ProfileService {
       }
 
       // Normalizar tipos antes de enviar
-      final tf = updateData['tamano_finca'];
+      final tf = updateData['farm_size'];
       if (tf is String) {
         final t = tf.trim();
         if (t.isEmpty) {
-          updateData.remove('tamano_finca');
+          updateData.remove('farm_size');
         } else {
           final parsed = double.tryParse(t);
           if (parsed != null) {
-            updateData['tamano_finca'] = parsed;
+            updateData['farm_size'] = parsed;
           } else {
-            updateData.remove('tamano_finca');
+            updateData.remove('farm_size');
           }
         }
       }
-      final fn = updateData['fecha_nacimiento'];
+      final fn = updateData['birth_date'];
       if (fn is String && fn.isNotEmpty) {
         // Enviar sólo YYYY-MM-DD si viene en ISO
         if (fn.length >= 10) {
-          updateData['fecha_nacimiento'] = fn.substring(0, 10);
+          updateData['birth_date'] = fn.substring(0, 10);
         }
       }
 
@@ -186,29 +199,20 @@ class ProfileService {
       Map<String, dynamic>? response;
       try {
         response = await _client
-            .from('usuarios')
+            .from('users')
             .upsert(updateData, onConflict: 'auth_user_id')
             .select()
             .maybeSingle()
             .timeout(const Duration(seconds: 15));
-      } on PostgrestException catch (pe) {
-        // Si falla por email duplicado, intentar vincular fila existente
-        final msg = pe.message;
-        if (msg.contains('usuarios_email_key') || msg.contains('duplicate key')) {
-          await _client.rpc('link_existing_usuario_to_auth_user', params: {
-            'user_email': updatedUser.email,
-          });
-          // Reintentar upsert sin email
-          updateData.remove('email');
-          response = await _client
-              .from('usuarios')
-              .upsert(updateData, onConflict: 'auth_user_id')
-              .select()
-              .maybeSingle()
-              .timeout(const Duration(seconds: 15));
-        } else {
-          rethrow;
-        }
+      } on PostgrestException {
+        // Simplificar: si hay conflicto por email, reintentar sin email
+        updateData.remove('email');
+        response = await _client
+            .from('users')
+            .upsert(updateData, onConflict: 'auth_user_id')
+            .select()
+            .maybeSingle()
+            .timeout(const Duration(seconds: 15));
       }
 
       LoggerService.info('Respuesta de Supabase: ${response.toString()}');
@@ -243,14 +247,14 @@ class ProfileService {
 
       // Verificar si el usuario existe en la tabla
       final existingUser = await _client
-          .from('usuarios')
+          .from('users')
           .select('*')
           .eq('auth_user_id', session!.user.id)
           .maybeSingle();
 
       // Intentar una operación simple de lectura
       final readTest = await _client
-          .from('usuarios')
+          .from('users')
           .select('count')
           .eq('auth_user_id', session.user.id);
 
@@ -258,7 +262,7 @@ class ProfileService {
       Map<String, dynamic>? writeTest;
       try {
         writeTest = await _client
-            .from('usuarios')
+            .from('users')
             .upsert({
               'auth_user_id': session.user.id,
               'email': session.user.email,
@@ -295,7 +299,7 @@ class ProfileService {
     DateTime? fechaNacimiento,
     String? experienciaAgricola,
     String? tamanoFinca,
-    String? tipoAgricultura,
+    String? primaryCrops,
   }) async {
     try {
       final session = _client.auth.currentSession;
@@ -313,7 +317,7 @@ class ProfileService {
         fechaNacimiento: fechaNacimiento,
         experienciaAgricola: experienciaAgricola,
         tamanoFinca: tamanoFinca,
-        tipoAgricultura: tipoAgricultura,
+        primaryCrops: primaryCrops,
         bio: biografia,
         updatedAt: DateTime.now(),
       );
@@ -388,7 +392,7 @@ class ProfileService {
            user.fechaNacimiento != null &&
            user.experienciaAgricola != null &&
            user.tamanoFinca != null &&
-           user.tipoAgricultura != null;
+           user.primaryCrops != null;
   }
 
   /// Obtener porcentaje de completitud del perfil
@@ -403,8 +407,46 @@ class ProfileService {
     if (user.fechaNacimiento != null) completedFields++;
     if (user.experienciaAgricola?.isNotEmpty == true) completedFields++;
     if (user.tamanoFinca?.isNotEmpty == true) completedFields++;
-    if (user.tipoAgricultura?.isNotEmpty == true) completedFields++;
+    if (user.primaryCrops?.isNotEmpty == true) completedFields++;
 
     return completedFields / totalFields;
+  }
+
+  /// Actualiza el cultivo principal del usuario actual
+  static Future<bool> updatePrimaryCrops(String newPrimaryCrops) async {
+    try {
+      final currentUser = await getCurrentUser();
+      if (currentUser == null) return false;
+
+      final updated = currentUser.copyWith(primaryCrops: newPrimaryCrops, updatedAt: DateTime.now());
+      return await updateProfile(updated);
+    } catch (e) {
+      LoggerService.error('Error actualizando cultivo principal', error: e);
+      return false;
+    }
+  }
+
+  /// Reemplaza el cultivo si coincide con uno no utilizado (simple: si coincide exactamente)
+  static Future<bool> replacePrimaryCrop({required String unusedCrop, required String replacement}) async {
+    try {
+      final currentUser = await getCurrentUser();
+      if (currentUser == null) return false;
+
+      final current = currentUser.primaryCrops?.trim();
+      if (current == null || current.isEmpty) {
+        // Si no hay cultivo actual, establecer el replacement directamente
+        return await updatePrimaryCrops(replacement);
+      }
+
+      if (current.toLowerCase() == unusedCrop.trim().toLowerCase()) {
+        return await updatePrimaryCrops(replacement);
+      }
+
+      // Si no coincide, no hacemos cambio
+      return false;
+    } catch (e) {
+      LoggerService.error('Error reemplazando cultivo principal', error: e);
+      return false;
+    }
   }
 }
