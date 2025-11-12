@@ -27,7 +27,7 @@ class InventorySyncService {
   // Sincronizar un elemento individual
   Future<bool> syncItem(InventoryItemModel item) async {
     if (!SupabaseService.isReady) {
-      developer.log('Supabase no está listo para sincronización', name: 'InventorySyncService');
+      developer.log('Supabase is not ready for sync', name: 'InventorySyncService');
       return false;
     }
 
@@ -40,39 +40,39 @@ class InventorySyncService {
       }
 
       final userResponse = await SupabaseService.client
-          .from('usuarios')
+          .from('users')
           .select('id')
           .eq('auth_user_id', currentUser!.id)
           .maybeSingle();
 
       if (userResponse == null) {
-        developer.log('Error: Usuario no encontrado en la tabla usuarios. Intentando crear...', name: 'InventorySyncService');
+        developer.log('Warning: User not found in users table. Trying to create...', name: 'InventorySyncService');
         
         // Intentar crear el usuario automáticamente
         try {
           await SupabaseService.client
-              .from('usuarios')
+              .from('users')
               .insert({
                 'auth_user_id': currentUser.id,
                 'email': currentUser.email ?? '',
-                'nombre': currentUser.userMetadata?['nombre'] ?? 'Usuario',
-                'apellido': currentUser.userMetadata?['apellido'] ?? '',
-                'email_confirmado': currentUser.emailConfirmedAt != null,
+                'first_name': currentUser.userMetadata?['nombre'] ?? 'User',
+                'last_name': currentUser.userMetadata?['apellido'] ?? '',
+                'email_confirmed': currentUser.emailConfirmedAt != null,
               });
           
           // Intentar obtener el usuario recién creado
           final newUserResponse = await SupabaseService.client
-              .from('usuarios')
+              .from('users')
               .select('id')
               .eq('auth_user_id', currentUser.id)
               .maybeSingle();
           
           if (newUserResponse == null) {
-            developer.log('Error: No se pudo crear el usuario en la tabla usuarios', name: 'InventorySyncService');
+            developer.log('Error: Failed to create user in users table', name: 'InventorySyncService');
             return false;
           }
           
-          developer.log('Usuario creado exitosamente en la tabla usuarios', name: 'InventorySyncService');
+          developer.log('User created successfully in users table', name: 'InventorySyncService');
         } catch (createError) {
           developer.log('Error creando usuario: $createError', name: 'InventorySyncService');
           return false;
@@ -80,7 +80,7 @@ class InventorySyncService {
         
         // Obtener el usuario nuevamente
         final finalUserResponse = await SupabaseService.client
-            .from('usuarios')
+            .from('users')
             .select('id')
             .eq('auth_user_id', currentUser.id)
             .maybeSingle();
@@ -92,7 +92,7 @@ class InventorySyncService {
 
       final userId = userResponse?['id'] as String? ?? 
                     (await SupabaseService.client
-                        .from('usuarios')
+                        .from('users')
                         .select('id')
                         .eq('auth_user_id', currentUser.id)
                         .single())['id'] as String;

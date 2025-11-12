@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 class GlobalLocationData {
@@ -26,7 +25,7 @@ class GlobalLocationData {
 
   factory GlobalLocationData.fromJson(Map<String, dynamic> json) {
     final address = json['address'] as Map<String, dynamic>? ?? {};
-    
+
     return GlobalLocationData(
       displayName: json['display_name'] ?? '',
       name: json['name'] ?? json['display_name'] ?? '',
@@ -34,7 +33,11 @@ class GlobalLocationData {
       longitude: double.tryParse(json['lon']?.toString() ?? '0') ?? 0.0,
       country: address['country'],
       state: address['state'] ?? address['province'] ?? address['region'],
-      city: address['city'] ?? address['town'] ?? address['village'] ?? address['municipality'],
+      city:
+          address['city'] ??
+          address['town'] ??
+          address['village'] ??
+          address['municipality'],
       type: json['type'] ?? 'unknown',
     );
   }
@@ -48,10 +51,10 @@ class GlobalLocationData {
 class GlobalLocationService {
   static const String _baseUrl = 'https://nominatim.openstreetmap.org/search';
   static const int _defaultLimit = 10;
-  
+
   // Cache para evitar llamadas repetidas
   static final Map<String, List<GlobalLocationData>> _cache = {};
-  
+
   /// Busca ubicaciones globalmente usando la API de Nominatim
   static Future<List<GlobalLocationData>> searchLocations(
     String query, {
@@ -64,22 +67,24 @@ class GlobalLocationService {
     }
 
     final cacheKey = '${query.toLowerCase()}_${countryCode ?? 'all'}_$limit';
-    
+
     // Verificar cache primero
     if (_cache.containsKey(cacheKey)) {
       return _cache[cacheKey]!;
     }
 
     try {
-      final uri = Uri.parse(_baseUrl).replace(queryParameters: {
-        'q': query,
-        'format': 'json',
-        'limit': limit.toString(),
-        'addressdetails': includeAddressDetails ? '1' : '0',
-        'accept-language': 'es,en',
-        'namedetails': '1',
-        if (countryCode != null) 'countrycodes': countryCode,
-      });
+      final uri = Uri.parse(_baseUrl).replace(
+        queryParameters: {
+          'q': query,
+          'format': 'json',
+          'limit': limit.toString(),
+          'addressdetails': includeAddressDetails ? '1' : '0',
+          'accept-language': 'es,en',
+          'namedetails': '1',
+          if (countryCode != null) 'countrycodes': countryCode,
+        },
+      );
 
       final response = await http.get(
         uri,
@@ -93,15 +98,17 @@ class GlobalLocationService {
         final List<dynamic> data = json.decode(response.body);
         final locations = data
             .map((item) => GlobalLocationData.fromJson(item))
-            .where((location) => 
-                location.latitude != 0.0 && 
-                location.longitude != 0.0 &&
-                location.displayName.isNotEmpty)
+            .where(
+              (location) =>
+                  location.latitude != 0.0 &&
+                  location.longitude != 0.0 &&
+                  location.displayName.isNotEmpty,
+            )
             .toList();
 
         // Guardar en cache
         _cache[cacheKey] = locations;
-        
+
         // Limpiar cache si se vuelve muy grande
         if (_cache.length > 100) {
           _cache.clear();
@@ -124,11 +131,7 @@ class GlobalLocationService {
     String countryCode, {
     int limit = _defaultLimit,
   }) async {
-    return searchLocations(
-      query,
-      limit: limit,
-      countryCode: countryCode,
-    );
+    return searchLocations(query, limit: limit, countryCode: countryCode);
   }
 
   /// Busca ciudades específicamente
@@ -144,14 +147,17 @@ class GlobalLocationService {
     );
 
     // Filtrar solo ciudades, pueblos y lugares habitados
-    return allResults.where((location) {
-      final type = location.type.toLowerCase();
-      return type.contains('city') ||
-             type.contains('town') ||
-             type.contains('village') ||
-             type.contains('municipality') ||
-             type.contains('administrative');
-    }).take(limit).toList();
+    return allResults
+        .where((location) {
+          final type = location.type.toLowerCase();
+          return type.contains('city') ||
+              type.contains('town') ||
+              type.contains('village') ||
+              type.contains('municipality') ||
+              type.contains('administrative');
+        })
+        .take(limit)
+        .toList();
   }
 
   /// Obtiene detalles de una ubicación por coordenadas (geocodificación inversa)
@@ -160,15 +166,16 @@ class GlobalLocationService {
     double longitude,
   ) async {
     try {
-      final uri = Uri.parse('https://nominatim.openstreetmap.org/reverse').replace(
-        queryParameters: {
-          'lat': latitude.toString(),
-          'lon': longitude.toString(),
-          'format': 'json',
-          'addressdetails': '1',
-          'accept-language': 'es,en',
-        },
-      );
+      final uri = Uri.parse('https://nominatim.openstreetmap.org/reverse')
+          .replace(
+            queryParameters: {
+              'lat': latitude.toString(),
+              'lon': longitude.toString(),
+              'format': 'json',
+              'addressdetails': '1',
+              'accept-language': 'es,en',
+            },
+          );
 
       final response = await http.get(
         uri,
@@ -197,10 +204,7 @@ class GlobalLocationService {
   static Future<List<String>> getCountrySuggestions(String query) async {
     if (query.trim().isEmpty) return [];
 
-    final results = await searchLocations(
-      query,
-      limit: 5,
-    );
+    final results = await searchLocations(query, limit: 5);
 
     final countries = results
         .where((location) => location.country != null)

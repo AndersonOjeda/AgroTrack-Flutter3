@@ -4,6 +4,8 @@ import 'database_service.dart';
 import 'cache_service.dart';
 import 'sync_service.dart';
 import '../services/logger_service.dart';
+import 'supabase_service.dart';
+import '../utils/date_utils.dart';
 
 class UserService {
   static final SupabaseClient _client = Supabase.instance.client;
@@ -28,13 +30,14 @@ class UserService {
     String? fechaNacimiento,
     String? experienciaAgricola,
     String? tamanoFinca,
-    String? tipoAgricultura,
+    String? primaryCrops,
   }) async {
     try {
       // 1. Registrar en Supabase Auth
       final authResponse = await _client.auth.signUp(
         email: email,
         password: password,
+        emailRedirectTo: SupabaseService.emailRedirectUrl,
       );
 
       if (authResponse.user == null) {
@@ -49,10 +52,10 @@ class UserService {
         email: email,
         telefono: telefono,
         ubicacion: ubicacion,
-        fechaNacimiento: fechaNacimiento != null ? DateTime.tryParse(fechaNacimiento) : null,
+        fechaNacimiento: DateUtilsAgro.parseBirthDate(fechaNacimiento),
         experienciaAgricola: experienciaAgricola,
         tamanoFinca: tamanoFinca,
-        tipoAgricultura: tipoAgricultura,
+        primaryCrops: primaryCrops,
         emailConfirmado: false,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
@@ -76,16 +79,18 @@ class UserService {
   static Future<UserModel> signIn({
     required String email,
     required String password,
+    bool performAuth = true,
   }) async {
     try {
-      // 1. Autenticar con Supabase
-      final authResponse = await _client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-
-      if (authResponse.user == null) {
-        throw Exception('Credenciales inválidas');
+      // 1. Autenticar con Supabase (opcional si ya se autenticó antes)
+      if (performAuth) {
+        final authResponse = await _client.auth.signInWithPassword(
+          email: email,
+          password: password,
+        );
+        if (authResponse.user == null) {
+          throw Exception('Invalid credentials');
+        }
       }
 
       // 2. Buscar usuario en cache/local primero
@@ -93,20 +98,30 @@ class UserService {
       
       if (user == null) {
         // 3. Si no está local, buscar en Supabase
-        final response = await _client
-            .from('usuarios')
-            .select('*')
+        final responseUsers = await _client
+            .from('users')
+            .select('id, email, first_name as nombre, last_name as apellido, phone as telefono, location as ubicacion, primary_crops, farming_experience as experiencia_agricola, farm_size as tamano_finca, birth_date as fecha_nacimiento, bio, profile_image_url, email_confirmed as email_confirmado, created_at, updated_at')
             .eq('email', email)
             .maybeSingle();
 
-        if (response != null) {
-          user = UserModel.fromJson(response);
-          // Guardar localmente para futuras consultas
+        if (responseUsers != null) {
+          user = UserModel.fromJson(responseUsers);
           await _databaseService.insertUser(user);
         }
       }
 
       if (user != null) {
+        // 3b. Actualizar estado de confirmación de email desde Auth
+        final authUser = _client.auth.currentUser;
+        final isEmailConfirmed = authUser?.emailConfirmedAt != null;
+        if (isEmailConfirmed && user.emailConfirmado != true) {
+          final updatedUser = user.copyWith(emailConfirmado: true, updatedAt: DateTime.now(), needsSync: true);
+          await _databaseService.updateUser(updatedUser);
+          // Sincronizar de forma no bloqueante
+          _syncService.forceSyncUser(updatedUser);
+          user = updatedUser;
+        }
+
         // 4. Actualizar cache de usuario actual
         await _cacheService.setCurrentUser(user);
         
@@ -116,9 +131,9 @@ class UserService {
         return user;
       }
 
-      throw Exception('Usuario no encontrado');
+      throw Exception('User not found');
     } catch (e) {
-      throw Exception('Error al iniciar sesión: $e');
+      throw Exception('Error signing in: $e');
     }
   }
 
@@ -128,7 +143,7 @@ class UserService {
       await _client.auth.signOut();
       await _cacheService.clearCurrentUser();
     } catch (e) {
-      throw Exception('Error al cerrar sesión: $e');
+      throw Exception('Error signing out: $e');
     }
   }
 
@@ -170,9 +185,9 @@ class UserService {
       // Por ahora, buscar solo en Supabase
       // En el futuro se podría implementar búsqueda local
       final response = await _client
-          .from('usuarios')
-          .select('*')
-          .or('nombre.ilike.%$query%,ubicacion.ilike.%$query%,tipo_agricultura.ilike.%$query%')
+          .from('users')
+          .select('id, email, first_name as nombre, last_name as apellido, phone as telefono, location as ubicacion, primary_crops, farming_experience as experiencia_agricola, farm_size as tamano_finca, birth_date as fecha_nacimiento, bio, profile_image_url, email_confirmed as email_confirmado, created_at, updated_at')
+          .or('first_name.ilike.%$query%,location.ilike.%$query%,primary_crops.ilike.%$query%')
           .order('updated_at', ascending: false);
 
       return response.map<UserModel>((data) => UserModel.fromJson(data)).toList();
@@ -187,9 +202,9 @@ class UserService {
   static Future<List<UserModel>> getUsersByLocation(String location) async {
     try {
       final response = await _client
-          .from('usuarios')
-          .select('*')
-          .ilike('ubicacion', '%$location%')
+          .from('users')
+          .select('id, email, first_name as nombre, last_name as apellido, phone as telefono, location as ubicacion, primary_crops, farming_experience as experiencia_agricola, farm_size as tamano_finca, birth_date as fecha_nacimiento, bio, profile_image_url, email_confirmed as email_confirmado, created_at, updated_at')
+          .ilike('location', '%$location%')
           .order('updated_at', ascending: false);
 
       return response.map<UserModel>((data) => UserModel.fromJson(data)).toList();

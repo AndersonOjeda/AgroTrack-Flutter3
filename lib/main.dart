@@ -15,6 +15,7 @@ import 'services/database_service.dart';
 import 'services/supabase_service.dart';
 import 'services/user_service.dart';
 import 'services/weather_state_provider.dart';
+import 'services/deep_link_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,14 +39,39 @@ void main() async {
   runApp(const TranslatorApp());
 }
 
-class TranslatorApp extends StatelessWidget {
+class TranslatorApp extends StatefulWidget {
   const TranslatorApp({super.key});
+
+  @override
+  State<TranslatorApp> createState() => _TranslatorAppState();
+}
+
+class _TranslatorAppState extends State<TranslatorApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Inicializar deep link service después de que el widget esté construido
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_navigatorKey.currentContext != null) {
+        DeepLinkService.initialize(_navigatorKey.currentContext!);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    DeepLinkService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (context) => WeatherStateProvider(),
       child: MaterialApp(
+        navigatorKey: _navigatorKey,
         title: 'Chat Agrícola',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(

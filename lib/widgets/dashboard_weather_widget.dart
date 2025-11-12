@@ -18,10 +18,10 @@ class DashboardWeatherWidget extends StatefulWidget {
 
 class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
   final WeatherService _weatherService = WeatherService();
-  
+
   bool _isLoadingWeather = false;
   bool _isLoadingLocation = false;
-  
+
   @override
   void initState() {
     super.initState();
@@ -36,14 +36,18 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
       final savedLng = prefs.getDouble('selected_longitude');
       final savedLocation = prefs.getString('selected_location');
 
-      LoggerService.info('Datos guardados - Lat: $savedLat, Lng: $savedLng, Location: $savedLocation');
+      LoggerService.info(
+        'Datos guardados - Lat: $savedLat, Lng: $savedLng, Location: $savedLocation',
+      );
 
       if (savedLat != null && savedLng != null && savedLocation != null) {
         LoggerService.info('Usando ubicación guardada: $savedLocation');
         await _getWeatherForLocation(savedLat, savedLng, savedLocation);
         await _getHourlyForecast(savedLat, savedLng, savedLocation);
       } else {
-        LoggerService.info('No hay ubicación guardada, obteniendo ubicación actual');
+        LoggerService.info(
+          'No hay ubicación guardada, obteniendo ubicación actual',
+        );
         await _getCurrentLocationWeather();
       }
     } catch (e) {
@@ -63,12 +67,12 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
         final prefs = await SharedPreferences.getInstance();
         final lastUpdate = prefs.getInt('location_update_timestamp') ?? 0;
         final currentTime = DateTime.now().millisecondsSinceEpoch;
-        
+
         if (currentTime - lastUpdate < 5000 && lastUpdate > 0) {
           final lat = prefs.getDouble('selected_latitude');
           final lng = prefs.getDouble('selected_longitude');
           final location = prefs.getString('selected_location');
-          
+
           if (lat != null && lng != null && location != null) {
             await _getWeatherForLocation(lat, lng, location);
             await _getHourlyForecast(lat, lng, location);
@@ -105,37 +109,46 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
 
       String locationName = 'Mi ubicación';
       try {
-        LoggerService.info('Iniciando geocodificación inversa para: ${position.latitude}, ${position.longitude}');
+        LoggerService.info(
+          'Iniciando geocodificación inversa para: ${position.latitude}, ${position.longitude}',
+        );
         final placemarks = await placemarkFromCoordinates(
           position.latitude,
           position.longitude,
         );
         LoggerService.info('Placemarks obtenidos: ${placemarks.length}');
-        
+
         if (placemarks.isNotEmpty) {
           final placemark = placemarks.first;
-          LoggerService.info('Placemark: locality=${placemark.locality}, subLocality=${placemark.subLocality}, subAdministrativeArea=${placemark.subAdministrativeArea}, administrativeArea=${placemark.administrativeArea}, country=${placemark.country}');
-          
+          LoggerService.info(
+            'Placemark: locality=${placemark.locality}, subLocality=${placemark.subLocality}, subAdministrativeArea=${placemark.subAdministrativeArea}, administrativeArea=${placemark.administrativeArea}, country=${placemark.country}',
+          );
+
           // Construir el nombre en formato ciudad, departamento
           String city = '';
           String department = '';
-          
+
           // Obtener ciudad (locality, subLocality, o subAdministrativeArea)
           if (placemark.locality != null && placemark.locality!.isNotEmpty) {
             city = placemark.locality!;
-          } else if (placemark.subLocality != null && placemark.subLocality!.isNotEmpty) {
+          } else if (placemark.subLocality != null &&
+              placemark.subLocality!.isNotEmpty) {
             city = placemark.subLocality!;
-          } else if (placemark.subAdministrativeArea != null && placemark.subAdministrativeArea!.isNotEmpty) {
+          } else if (placemark.subAdministrativeArea != null &&
+              placemark.subAdministrativeArea!.isNotEmpty) {
             city = placemark.subAdministrativeArea!;
           }
-          
+
           // Obtener departamento (administrativeArea)
-          if (placemark.administrativeArea != null && placemark.administrativeArea!.isNotEmpty) {
+          if (placemark.administrativeArea != null &&
+              placemark.administrativeArea!.isNotEmpty) {
             department = placemark.administrativeArea!;
           }
-          
-          LoggerService.info('Ciudad extraída: $city, Departamento extraído: $department');
-          
+
+          LoggerService.info(
+            'Ciudad extraída: $city, Departamento extraído: $department',
+          );
+
           // Construir el nombre final
           if (city.isNotEmpty && department.isNotEmpty) {
             locationName = '$city, $department';
@@ -146,18 +159,28 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
           } else {
             locationName = 'Mi ubicación';
           }
-          
+
           LoggerService.info('Nombre de ubicación final: $locationName');
         } else {
-          LoggerService.warning('No se encontraron placemarks para las coordenadas');
+          LoggerService.warning(
+            'No se encontraron placemarks para las coordenadas',
+          );
         }
       } catch (e) {
         LoggerService.error('Error obteniendo nombre de ubicación: $e');
         locationName = 'Mi ubicación';
       }
 
-      await _getWeatherForLocation(position.latitude, position.longitude, locationName);
-      await _getHourlyForecast(position.latitude, position.longitude, locationName);
+      await _getWeatherForLocation(
+        position.latitude,
+        position.longitude,
+        locationName,
+      );
+      await _getHourlyForecast(
+        position.latitude,
+        position.longitude,
+        locationName,
+      );
     } catch (e) {
       LoggerService.error('Error obteniendo ubicación actual: $e');
       if (mounted) {
@@ -174,24 +197,35 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
     }
   }
 
-  Future<void> _getWeatherForLocation(double lat, double lng, String locationName) async {
+  Future<void> _getWeatherForLocation(
+    double lat,
+    double lng,
+    String locationName,
+  ) async {
     setState(() {
       _isLoadingWeather = true;
     });
 
     try {
-      final weatherData = await _weatherService.getWeatherData(lat, lng, locationName);
-      
+      final weatherData = await _weatherService.getWeatherData(
+        lat,
+        lng,
+        locationName,
+      );
+
       if (mounted) {
-        final weatherProvider = Provider.of<WeatherStateProvider>(context, listen: false);
+        final weatherProvider = Provider.of<WeatherStateProvider>(
+          context,
+          listen: false,
+        );
         weatherProvider.updateWeather(weatherData, locationName);
       }
     } catch (e) {
       LoggerService.error('Error obteniendo clima: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error obteniendo clima: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error obteniendo clima: $e')));
       }
     } finally {
       if (mounted) {
@@ -202,13 +236,24 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
     }
   }
 
-  Future<void> _getHourlyForecast(double lat, double lng, String locationName) async {
+  Future<void> _getHourlyForecast(
+    double lat,
+    double lng,
+    String locationName,
+  ) async {
     try {
-      final weatherProvider = Provider.of<WeatherStateProvider>(context, listen: false);
+      final weatherProvider = Provider.of<WeatherStateProvider>(
+        context,
+        listen: false,
+      );
       weatherProvider.setLoadingHourly(true);
-      
-      final hourlyData = await _weatherService.getHourlyForecast(lat, lng, locationName);
-      
+
+      final hourlyData = await _weatherService.getHourlyForecast(
+        lat,
+        lng,
+        locationName,
+      );
+
       if (mounted) {
         weatherProvider.updateHourlyForecast(hourlyData);
       }
@@ -255,10 +300,7 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
 
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(
-        minHeight: 180,
-        maxHeight: 220,
-      ),
+      constraints: const BoxConstraints(minHeight: 180, maxHeight: 220),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: _getWeatherGradient(weather.description),
@@ -292,7 +334,7 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
                     maxLines: 2,
                   ),
                 ),
-                
+
                 // Sección central con temperatura e icono
                 Expanded(
                   flex: 2,
@@ -314,9 +356,9 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(width: 16),
-                      
+
                       // Temperatura
                       Expanded(
                         child: Column(
@@ -336,7 +378,7 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
                               ),
                             ),
                             Text(
-                              '${(weather.temperature * 9/5 + 32).round()} F',
+                              '${(weather.temperature * 9 / 5 + 32).round()} F',
                               style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 14,
@@ -348,15 +390,12 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
                     ],
                   ),
                 ),
-                
+
                 // Footer con día
                 Flexible(
                   child: Text(
                     _formatDay(DateTime.now()),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                 ),
               ],
@@ -403,9 +442,7 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
             ),
           ],
         ),
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -474,7 +511,7 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          
+
           Flexible(
             flex: 2,
             child: Text(
@@ -482,7 +519,7 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
               style: const TextStyle(fontSize: 24),
             ),
           ),
-          
+
           Flexible(
             child: Text(
               '${hourData.temperature.round()}°',
@@ -548,10 +585,7 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
               const SizedBox(height: 8),
               Text(
                 error,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
                 maxLines: 2,
@@ -597,20 +631,26 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
 
   LinearGradient _getWeatherGradient(String description) {
     final desc = description.toLowerCase();
-    
-    if (desc.contains('rain') || desc.contains('lluvia') || desc.contains('drizzle')) {
+
+    if (desc.contains('rain') ||
+        desc.contains('lluvia') ||
+        desc.contains('drizzle')) {
       return const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [Color(0xFF4FC3F7), Color(0xFF1976D2)],
       );
-    } else if (desc.contains('cloud') || desc.contains('nublado') || desc.contains('overcast')) {
+    } else if (desc.contains('cloud') ||
+        desc.contains('nublado') ||
+        desc.contains('overcast')) {
       return const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [Color(0xFF78909C), Color(0xFF455A64)],
       );
-    } else if (desc.contains('sun') || desc.contains('despejado') || desc.contains('clear')) {
+    } else if (desc.contains('sun') ||
+        desc.contains('despejado') ||
+        desc.contains('clear')) {
       return const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -633,12 +673,18 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
 
   String _getWeatherDescription(String description) {
     final desc = description.toLowerCase();
-    
-    if (desc.contains('rain') || desc.contains('lluvia') || desc.contains('drizzle')) {
+
+    if (desc.contains('rain') ||
+        desc.contains('lluvia') ||
+        desc.contains('drizzle')) {
       return 'Rainy';
-    } else if (desc.contains('cloud') || desc.contains('nublado') || desc.contains('overcast')) {
+    } else if (desc.contains('cloud') ||
+        desc.contains('nublado') ||
+        desc.contains('overcast')) {
       return 'Cloudy';
-    } else if (desc.contains('sun') || desc.contains('despejado') || desc.contains('clear')) {
+    } else if (desc.contains('sun') ||
+        desc.contains('despejado') ||
+        desc.contains('clear')) {
       return 'Sunny';
     } else if (desc.contains('partly') || desc.contains('parcialmente')) {
       return 'Partly Cloudy';
@@ -649,12 +695,18 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
 
   String _getWeatherIcon(String description) {
     final desc = description.toLowerCase();
-    
-    if (desc.contains('rain') || desc.contains('lluvia') || desc.contains('drizzle')) {
+
+    if (desc.contains('rain') ||
+        desc.contains('lluvia') ||
+        desc.contains('drizzle')) {
       return '🌧️';
-    } else if (desc.contains('cloud') || desc.contains('nublado') || desc.contains('overcast')) {
+    } else if (desc.contains('cloud') ||
+        desc.contains('nublado') ||
+        desc.contains('overcast')) {
       return '☁️';
-    } else if (desc.contains('sun') || desc.contains('despejado') || desc.contains('clear')) {
+    } else if (desc.contains('sun') ||
+        desc.contains('despejado') ||
+        desc.contains('clear')) {
       return '☀️';
     } else if (desc.contains('partly') || desc.contains('parcialmente')) {
       return '⛅';
@@ -665,12 +717,18 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
 
   String _getBackgroundIcon(String description) {
     final desc = description.toLowerCase();
-    
-    if (desc.contains('rain') || desc.contains('lluvia') || desc.contains('drizzle')) {
+
+    if (desc.contains('rain') ||
+        desc.contains('lluvia') ||
+        desc.contains('drizzle')) {
       return '💧';
-    } else if (desc.contains('cloud') || desc.contains('nublado') || desc.contains('overcast')) {
+    } else if (desc.contains('cloud') ||
+        desc.contains('nublado') ||
+        desc.contains('overcast')) {
       return '☁️';
-    } else if (desc.contains('sun') || desc.contains('despejado') || desc.contains('clear')) {
+    } else if (desc.contains('sun') ||
+        desc.contains('despejado') ||
+        desc.contains('clear')) {
       return '☀️';
     } else if (desc.contains('partly') || desc.contains('parcialmente')) {
       return '⛅';
@@ -680,14 +738,22 @@ class _DashboardWeatherWidgetState extends State<DashboardWeatherWidget> {
   }
 
   String _formatDay(DateTime date) {
-    final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    final days = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
     return days[date.weekday % 7];
   }
 
   String _formatHour(DateTime date) {
     final hour = date.hour;
     if (hour == 0) return '12 AM';
-    if (hour < 12) return '${hour} AM';
+    if (hour < 12) return '$hour AM';
     if (hour == 12) return '12 PM';
     return '${hour - 12} PM';
   }

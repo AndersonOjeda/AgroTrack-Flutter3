@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../services/supabase_service.dart';
+import '../services/email_service.dart';
 import '../services/location_service.dart';
 import '../services/logger_service.dart';
 import '../widgets/location_search_field.dart';
 import 'email_confirmation_screen.dart';
+import 'login_screen.dart';
+import 'package:flutter/foundation.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -26,68 +31,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   
   DateTime? _fechaNacimiento;
+  bool _showBirthDatePicker = false;
   String? _experienciaAgricola;
   String? _tamanoFinca;
-  String? _tipoAgricultura;
+  String? _primaryCrops;
   bool _isLoading = false;
   bool _isLoadingLocation = false;
   bool _obscurePassword = true;
 
   final List<String> _experienciaOpciones = [
-    'Nuevo en la agricultura (menos de 1 año)',
-    'Principiante (1-3 años)',
-    'Con experiencia (4-10 años)',
-    'Muy experimentado (11-20 años)',
-    'Experto (más de 20 años)'
+    'New to agriculture (less than 1 year)',
+    'Beginner (1-3 years)',
+    'Experienced (4-10 years)',
+    'Very experienced (11-20 years)',
+    'Expert (more than 20 years)'
   ];
 
   final List<String> _tamanoFincaOpciones = [
-    'Pequeña (menos de 1 hectárea)',
-    'Mediana (1-5 hectáreas)',
-    'Grande (más de 5 hectáreas)'
+    'Small (less than 1 hectare)',
+    'Medium (1-5 hectares)',
+    'Large (more than 5 hectares)'
   ];
 
-  final List<Map<String, dynamic>> _tipoAgriculturaOpciones = [
-    {
-      'value': 'Agricultura orgánica',
-      'icon': Icons.eco,
-      'description': 'Sin pesticidas ni fertilizantes químicos'
-    },
-    {
-      'value': 'Agricultura convencional',
-      'icon': Icons.agriculture,
-      'description': 'Métodos tradicionales con tecnología moderna'
-    },
-    {
-      'value': 'Agricultura hidropónica',
-      'icon': Icons.water_drop,
-      'description': 'Cultivo en soluciones nutritivas sin suelo'
-    },
-    {
-      'value': 'Agricultura de precisión',
-      'icon': Icons.gps_fixed,
-      'description': 'Uso de tecnología GPS y sensores'
-    },
-    {
-      'value': 'Permacultura',
-      'icon': Icons.nature_people,
-      'description': 'Diseño sostenible de sistemas agrícolas'
-    },
-    {
-      'value': 'Agricultura vertical',
-      'icon': Icons.layers,
-      'description': 'Cultivo en estructuras verticales'
-    },
-    {
-      'value': 'Agroecología',
-      'icon': Icons.forest,
-      'description': 'Integración de principios ecológicos'
-    },
-    {
-      'value': 'Agricultura regenerativa',
-      'icon': Icons.refresh,
-      'description': 'Restauración de la salud del suelo'
-    }
+  final List<Map<String, dynamic>> _primaryCropsOptions = [
+    {'value': 'Corn (Maize)', 'icon': Icons.eco, 'description': 'Staple cereal crop used for food and feed'},
+    {'value': 'Wheat', 'icon': Icons.grass, 'description': 'Major cereal grain for flour and food'},
+    {'value': 'Rice', 'icon': Icons.rice_bowl, 'description': 'Primary staple food crop in many regions'},
+    {'value': 'Soybeans', 'icon': Icons.spa, 'description': 'Legume for oil and protein-rich products'},
+    {'value': 'Coffee', 'icon': Icons.coffee, 'description': 'Popular beverage crop grown in tropical climates'},
+    {'value': 'Cocoa', 'icon': Icons.cookie, 'description': 'Bean used to produce chocolate products'},
+    {'value': 'Banana/Plantain', 'icon': Icons.local_florist, 'description': 'Tropical fruit crop for fresh and cooked uses'},
+    {'value': 'Sugarcane', 'icon': Icons.ssid_chart, 'description': 'Crop for sugar and bioethanol production'},
+    {'value': 'Cotton', 'icon': Icons.dry_cleaning, 'description': 'Fiber crop for textiles and industry'},
+    {'value': 'Vegetables', 'icon': Icons.spa_outlined, 'description': 'Mixed horticultural vegetables as main production'},
+    {'value': 'Fruits', 'icon': Icons.local_florist_outlined, 'description': 'Mixed fruit orchards or plantations'},
+    {'value': 'Other', 'icon': Icons.category, 'description': 'Another primary crop not listed'}
   ];
   Future<void> _getCurrentLocation() async {
     setState(() => _isLoadingLocation = true);
@@ -95,7 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        _showError('Los servicios de ubicación están deshabilitados.');
+        _showError('Location services are disabled.');
         return;
       }
 
@@ -103,13 +81,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          _showError('Permisos de ubicación denegados.');
+          _showError('Location permissions denied.');
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _showError('Permisos de ubicación denegados permanentemente.');
+        _showError('Location permissions permanently denied.');
         return;
       }
 
@@ -124,7 +102,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (nearestCity != null) {
         // Si encontramos una ciudad en nuestro servicio, usarla
         _ubicacionController.text = nearestCity.fullName;
-        _showInfo('Ubicación detectada: ${nearestCity.fullName}');
+        _showInfo('Location detected: ${nearestCity.fullName}');
         return;
       }
       
@@ -193,21 +171,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _ubicacionController.text = detailedLocation;
           
           // Mostrar mensaje específico sobre la ubicación detectada
-          String ciudadDetectada = city.isNotEmpty ? city : 'ubicación';
-          _showInfo('Ubicación detectada: $ciudadDetectada');
+          String ciudadDetectada = city.isNotEmpty ? city : 'location';
+          _showInfo('Location detected: $ciudadDetectada');
         } else {
           // Fallback a coordenadas si no hay placemarks
           _ubicacionController.text = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
-          _showInfo('Ubicación obtenida (coordenadas)');
+          _showInfo('Location obtained (coordinates)');
         }
       } catch (geocodingError) {
         // Si falla el geocoding, usar coordenadas
         _ubicacionController.text = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
-        _showInfo('Ubicación obtenida (coordenadas)');
-        LoggerService.error('Error de geocoding: $geocodingError');
+        _showInfo('Location obtained (coordinates)');
+        LoggerService.error('Geocoding error: $geocodingError');
       }
     } catch (e) {
-      _showError('Error al obtener la ubicación: $e');
+      _showError('Error getting location: $e');
     } finally {
       setState(() => _isLoadingLocation = false);
     }
@@ -236,6 +214,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (picked != null && picked != _fechaNacimiento) {
       setState(() {
         _fechaNacimiento = picked;
+        // No mantener abierto: modal discreto y cerrable
+        _showBirthDatePicker = false;
       });
     }
   }
@@ -243,57 +223,103 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
     if (_fechaNacimiento == null) {
-      _showError('Por favor selecciona tu fecha de nacimiento');
+      _showError('Please select your birth date');
       return;
     }
     if (_experienciaAgricola == null) {
-      _showError('Por favor selecciona tu experiencia agrícola');
+      _showError('Please select your agricultural experience');
       return;
     }
     if (_tamanoFinca == null) {
-      _showError('Por favor selecciona el tamaño de tu finca');
+      _showError('Please select your farm size');
       return;
     }
-    if (_tipoAgricultura == null) {
-      _showError('Por favor selecciona el tipo de agricultura');
+    if (_primaryCrops == null) {
+      _showError('Please select your primary crops');
       return;
     }
 
     setState(() => _isLoading = true);
     
     try {
-      final response = await SupabaseService.client.auth.signUp(
+      LoggerService.info('SignUp: starting request to Supabase');
+      final response = await SupabaseService.client.auth
+          .signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         emailRedirectTo: SupabaseService.emailRedirectUrl,
         data: {
-          'nombre': _nombreController.text.trim(),
-          'apellido': _apellidoController.text.trim(),
-          'telefono': _telefonoController.text.trim(),
-          'ubicacion': _ubicacionController.text.trim(),
-          'fecha_nacimiento': _fechaNacimiento!.toIso8601String(),
-          'experiencia_agricola': _experienciaAgricola,
-          'tamano_finca': _tamanoFinca,
-          'tipo_agricultura': _tipoAgricultura,
+          'first_name': _nombreController.text.trim(),
+          'last_name': _apellidoController.text.trim(),
+          'phone': _telefonoController.text.trim(),
+          'location': _ubicacionController.text.trim(),
+          'birth_date': DateFormat('yyyy-MM-dd').format(_fechaNacimiento!),
+          'farming_experience': _experienciaAgricola,
+          'farm_size': _tamanoFinca,
+          'farming_type': _primaryCrops,
+          'primary_crops': _primaryCrops,
         },
-      );
+      )
+          .timeout(const Duration(seconds: 15));
+
+      // Minimal diagnostics
+      LoggerService.info('SignUp: user=${response.user?.email ?? 'null'} redirect=${SupabaseService.emailRedirectUrl}');
+      LoggerService.info('SignUp: session exists=${response.session != null}');
 
       if (response.user != null) {
-        // Navegar a la pantalla de confirmación de email
         if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => EmailConfirmationScreen(
-                userEmail: _emailController.text.trim(),
+          // On mobile, redirect to Login screen after registration
+          if (!kIsWeb) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => const LoginScreen(),
               ),
+              (route) => false,
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Account created. Please confirm your email, then sign in.',
+                ),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          } else {
+            // On web, keep email confirmation instructions screen
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => EmailConfirmationScreen(
+                  userEmail: _emailController.text.trim(),
+                ),
+              ),
+            );
+          }
+        }
+      } else {
+        // If user is null (confirmation required), force a resend to ensure email is dispatched
+        final email = _emailController.text.trim();
+        final sent = await EmailService.resendConfirmationEmail(email);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                sent
+                    ? 'Confirmation email resent. Please check your inbox.'
+                    : 'Could not send the confirmation email. Verify configuration.',
+              ),
+              backgroundColor: sent ? Colors.green : Colors.red,
+              duration: const Duration(seconds: 3),
             ),
           );
         }
       }
+    } on TimeoutException {
+      _showError('Sign up timed out. Check internet and Supabase config.');
     } on AuthException catch (e) {
       _showError(e.message);
     } catch (e) {
-      _showError('Error inesperado: $e');
+      _showError('Unexpected error: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -390,7 +416,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'Crear Cuenta',
+                                    'Join AgroTrack',
                                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: Colors.green.shade700,
@@ -414,7 +440,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         TextFormField(
                           controller: _nombreController,
                           decoration: InputDecoration(
-                            labelText: 'Nombre',
+                            labelText: 'First Name',
                             prefixIcon: const Icon(Icons.person_outline),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -430,7 +456,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             filled: true,
                             fillColor: Colors.grey.shade50,
                           ),
-                          validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu nombre' : null,
+                          validator: (v) => (v == null || v.isEmpty) ? 'Enter your first name' : null,
                         ),
                         const SizedBox(height: 16),
 
@@ -438,7 +464,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         TextFormField(
                           controller: _apellidoController,
                           decoration: InputDecoration(
-                            labelText: 'Apellido',
+                            labelText: 'Last Name',
                             prefixIcon: const Icon(Icons.person_outline),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -454,7 +480,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             filled: true,
                             fillColor: Colors.grey.shade50,
                           ),
-                          validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu apellido' : null,
+                          validator: (v) => (v == null || v.isEmpty) ? 'Enter your last name' : null,
                         ),
                         const SizedBox(height: 16),
 
@@ -462,7 +488,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         TextFormField(
                           controller: _emailController,
                           decoration: InputDecoration(
-                            labelText: 'Correo electrónico',
+                            labelText: 'Email',
                             prefixIcon: const Icon(Icons.email_outlined),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -479,7 +505,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fillColor: Colors.grey.shade50,
                           ),
                           keyboardType: TextInputType.emailAddress,
-                          validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu correo' : null,
+                          validator: (v) => (v == null || v.isEmpty) ? 'Enter your email' : null,
                         ),
                         const SizedBox(height: 16),
 
@@ -487,7 +513,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         TextFormField(
                           controller: _passwordController,
                           decoration: InputDecoration(
-                            labelText: 'Contraseña',
+                            labelText: 'Password',
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -514,7 +540,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fillColor: Colors.grey.shade50,
                           ),
                           obscureText: _obscurePassword,
-                          validator: (v) => (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+                          validator: (v) => (v == null || v.length < 6) ? 'Minimum 6 characters' : null,
                         ),
                         const SizedBox(height: 16),
 
@@ -539,11 +565,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fillColor: Colors.grey.shade50,
                           ),
                           keyboardType: TextInputType.phone,
-                          validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu teléfono' : null,
+                          validator: (v) => (v == null || v.isEmpty) ? 'Enter your phone' : null,
                         ),
                         const SizedBox(height: 16),
 
-                        // Fecha de nacimiento
+                        // Fecha de nacimiento (selección discreta)
                         InkWell(
                           onTap: _selectDate,
                           child: Container(
@@ -560,7 +586,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 Expanded(
                                   child: Text(
                                     _fechaNacimiento == null
-                                        ? 'Fecha de nacimiento'
+                                        ? 'Birth date'
                                         : '${_fechaNacimiento!.day}/${_fechaNacimiento!.month}/${_fechaNacimiento!.year}',
                                     style: TextStyle(
                                       color: _fechaNacimiento == null ? Colors.grey.shade600 : Colors.black,
@@ -568,18 +594,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ),
                                   ),
                                 ),
-                                Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_fechaNacimiento != null)
+                                      IconButton(
+                                        tooltip: 'Clear',
+                                        icon: const Icon(Icons.clear),
+                                        color: Colors.grey.shade600,
+                                        onPressed: () {
+                                          setState(() {
+                                            _fechaNacimiento = null;
+                                          });
+                                        },
+                                      ),
+                                    Icon(Icons.calendar_month, color: Colors.grey.shade600),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
                         ),
+                        // Calendario modal: no persistente para no estorbar la UI
+                        const SizedBox.shrink(),
                         const SizedBox(height: 16),
 
                         // Experiencia agrícola
                         DropdownButtonFormField<String>(
                           initialValue: _experienciaAgricola,
                           decoration: InputDecoration(
-                            labelText: 'Experiencia agrícola',
+                            labelText: 'Agricultural experience',
                             prefixIcon: const Icon(Icons.agriculture_outlined),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -593,8 +637,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               borderSide: BorderSide(color: Colors.green.shade600, width: 2),
                             ),
                             filled: true,
-                            fillColor: Colors.grey.shade50,
+                          fillColor: Colors.grey.shade50,
                           ),
+                          isExpanded: true,
                           items: _experienciaOpciones.map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
@@ -606,7 +651,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               _experienciaAgricola = newValue;
                             });
                           },
-                          validator: (v) => v == null ? 'Selecciona tu experiencia' : null,
+                          validator: (v) => v == null ? 'Select your experience' : null,
                         ),
                         const SizedBox(height: 16),
 
@@ -614,7 +659,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         DropdownButtonFormField<String>(
                           initialValue: _tamanoFinca,
                           decoration: InputDecoration(
-                            labelText: 'Tamaño de finca',
+                            labelText: 'Farm size',
                             prefixIcon: const Icon(Icons.landscape_outlined),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -628,8 +673,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               borderSide: BorderSide(color: Colors.green.shade600, width: 2),
                             ),
                             filled: true,
-                            fillColor: Colors.grey.shade50,
+                          fillColor: Colors.grey.shade50,
                           ),
+                          isExpanded: true,
                           items: _tamanoFincaOpciones.map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
@@ -641,23 +687,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               _tamanoFinca = newValue;
                             });
                           },
-                          validator: (v) => v == null ? 'Selecciona el tamaño de tu finca' : null,
+                          validator: (v) => v == null ? 'Select your farm size' : null,
                         ),
                         const SizedBox(height: 16),
 
-                        // Tipo de agricultura
+                        // Primary crops
                         Row(
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                initialValue: _tipoAgricultura,
+                                initialValue: _primaryCrops,
                                 decoration: InputDecoration(
-                                  labelText: 'Tipo de agricultura',
+                                  labelText: 'Primary Crops',
                                   prefixIcon: Icon(
-                                    _tipoAgricultura != null 
-                                      ? _tipoAgriculturaOpciones.firstWhere(
-                                          (option) => option['value'] == _tipoAgricultura,
-                                          orElse: () => {'icon': Icons.eco}
+                                    _primaryCrops != null 
+                                      ? _primaryCropsOptions.firstWhere(
+                                          (option) => option['value'] == _primaryCrops,
+                                          orElse: () => {'icon': Icons.local_florist}
                                         )['icon']
                                       : Icons.eco,
                                     color: Colors.green.shade600,
@@ -676,7 +722,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   filled: true,
                                   fillColor: Colors.grey.shade50,
                                 ),
-                                items: _tipoAgriculturaOpciones.map((Map<String, dynamic> option) {
+                                items: _primaryCropsOptions.map((Map<String, dynamic> option) {
                                   return DropdownMenuItem<String>(
                                     value: option['value'],
                                     child: Padding(
@@ -695,10 +741,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 }).toList(),
                                 onChanged: (String? newValue) {
                                   setState(() {
-                                    _tipoAgricultura = newValue;
+                                    _primaryCrops = newValue;
                                   });
                                 },
-                                validator: (v) => v == null ? 'Selecciona el tipo de agricultura' : null,
+                                validator: (v) => v == null ? 'Select your primary crops' : null,
                                 isExpanded: true,
                                 menuMaxHeight: 300,
                                 itemHeight: null, // Altura dinámica automática
@@ -711,13 +757,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             const SizedBox(width: 8),
                             IconButton(
-                              onPressed: () => _mostrarDefinicionesAgricultura(),
+                              onPressed: () => _showPrimaryCropsInfo(),
                               icon: const Icon(
                                 Icons.help_outline,
                                 color: Colors.green,
                                 size: 24,
                               ),
-                              tooltip: 'Ver definiciones de tipos de agricultura',
+                              tooltip: 'See primary crop descriptions',
                               style: IconButton.styleFrom(
                                 backgroundColor: Colors.green.shade50,
                                 shape: RoundedRectangleBorder(
@@ -732,9 +778,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Ubicación
                         LocationSearchField(
                           controller: _ubicacionController,
-                          labelText: 'Ubicación',
-                          hintText: 'Buscar ciudad y departamento (ej: Pasto, Nariño)',
-                          validator: (v) => (v == null || v.isEmpty) ? 'Selecciona tu ubicación' : null,
+                          labelText: 'Location',
+                          hintText: 'Search city and state (e.g: Pasto, Nariño)',
+                          validator: (v) => (v == null || v.isEmpty) ? 'Select your location' : null,
                           onLocationSelected: () {
                             // Opcional: agregar lógica adicional cuando se selecciona una ubicación
                           },
@@ -755,8 +801,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       )
                                     : const Icon(Icons.my_location),
                                 label: Text(_isLoadingLocation 
-                                    ? 'Obteniendo ubicación...' 
-                                    : 'Usar mi ubicación actual'),
+                                    ? 'Getting location...' 
+                                    : 'Use my current location'),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.green.shade600,
                                   side: BorderSide(color: Colors.green.shade600),
@@ -799,7 +845,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       Icon(Icons.person_add),
                                       SizedBox(width: 8),
                                       Text(
-                                        'Crear Cuenta',
+                                        'Join AgroTrack',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
@@ -813,7 +859,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         // Texto de términos
                         Text(
-                          'Al crear una cuenta, aceptas nuestros términos y condiciones de uso.',
+                          'By creating an account, you accept our terms and conditions of use.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.grey.shade600,
@@ -832,13 +878,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  void _mostrarDefinicionesAgricultura() {
+  void _showPrimaryCropsInfo() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text(
-            'Tipos de Agricultura',
+            'Primary Crops',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.green,
@@ -848,9 +894,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             width: double.maxFinite,
             child: ListView.builder(
               shrinkWrap: true,
-              itemCount: _tipoAgriculturaOpciones.length,
+              itemCount: _primaryCropsOptions.length,
               itemBuilder: (context, index) {
-                final tipo = _tipoAgriculturaOpciones[index];
+                final tipo = _primaryCropsOptions[index];
                 return Card(
                   margin: const EdgeInsets.symmetric(vertical: 4),
                   child: Padding(
@@ -879,7 +925,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _getDefinicionCompleta(tipo['value']),
+                          _getPrimaryCropsDescription(tipo['value']),
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade700,
@@ -906,34 +952,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  String _getDefinicionCompleta(String tipoAgricultura) {
-    switch (tipoAgricultura) {
-      case 'Agricultura orgánica':
-        return 'Sistema de producción que evita el uso de fertilizantes sintéticos, pesticidas, reguladores de crecimiento y aditivos para el ganado. Se basa en el uso de abonos orgánicos, rotación de cultivos y control biológico de plagas para mantener la fertilidad del suelo y controlar las plagas.';
-      
-      case 'Agricultura convencional':
-        return 'Método de agricultura que utiliza fertilizantes sintéticos, pesticidas químicos y técnicas modernas de mecanización. Es el sistema más común y busca maximizar la producción mediante el uso de tecnología y productos químicos aprobados.';
-      
-      case 'Agricultura hidropónica':
-        return 'Técnica de cultivo que no utiliza suelo, sino que las plantas crecen en soluciones nutritivas líquidas. Permite un control preciso de los nutrientes y puede realizarse en espacios reducidos con mayor eficiencia en el uso del agua.';
-      
-      case 'Agricultura de precisión':
-        return 'Sistema de manejo agrícola que utiliza tecnologías como GPS, sensores, drones y análisis de datos para optimizar el rendimiento de los cultivos. Permite aplicar insumos de manera variable según las necesidades específicas de cada zona del campo.';
-      
-      case 'Permacultura':
-        return 'Filosofía y método de diseño que busca crear sistemas agrícolas sostenibles y autosuficientes. Se basa en principios éticos y de diseño que imitan los patrones naturales para crear ecosistemas productivos y resilientes.';
-      
-      case 'Agricultura vertical':
-        return 'Método de cultivo que utiliza estructuras verticales apiladas para producir alimentos en espacios reducidos. Comúnmente se combina con hidroponía y iluminación LED controlada, siendo ideal para áreas urbanas.';
-      
-      case 'Agroecología':
-        return 'Enfoque científico que aplica principios ecológicos al diseño y manejo de sistemas agrícolas sostenibles. Integra aspectos ambientales, sociales y económicos para crear sistemas productivos que respeten los ciclos naturales.';
-      
-      case 'Agricultura regenerativa':
-        return 'Sistema de cultivo que se enfoca en regenerar y mejorar la salud del suelo mediante prácticas como cultivos de cobertura, rotación diversa, pastoreo rotacional y minimización del laboreo. Busca capturar carbono y restaurar la biodiversidad.';
-      
+  String _getPrimaryCropsDescription(String crop) {
+    switch (crop) {
+      case 'Corn (Maize)':
+        return 'Staple cereal used for food, feed, silage, and biofuel.';
+      case 'Wheat':
+        return 'Major cereal grain processed into flour, bread, and pasta.';
+      case 'Rice':
+        return 'Primary staple food crop; grown in paddies or upland systems.';
+      case 'Soybeans':
+        return 'Legume for edible oil, animal feed, tofu, and protein products.';
+      case 'Coffee':
+        return 'Tropical beverage crop; arabica/robusta varieties for roasting.';
+      case 'Cocoa':
+        return 'Beans processed into chocolate; requires humid tropical climates.';
+      case 'Banana/Plantain':
+        return 'Tropical fruit; plantain commonly used cooked; banana eaten fresh.';
+      case 'Sugarcane':
+        return 'Industrial crop for sugar, molasses, and bioethanol production.';
+      case 'Cotton':
+        return 'Fiber crop used in textiles; requires warm climates and management.';
+      case 'Vegetables':
+        return 'Horticultural crops such as leafy greens, roots, and fruiting veg.';
+      case 'Fruits':
+        return 'Orchard or tropical fruit crops; fresh market or processing.';
+      case 'Other':
+        return 'Another primary crop as main production focus.';
       default:
-        return 'Definición no disponible.';
+        return 'Description not available.';
     }
   }
 }

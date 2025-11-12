@@ -1,7 +1,7 @@
 -- Crear tabla inventory_items si no existe
 CREATE TABLE IF NOT EXISTS inventory_items (
     id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES usuarios(id) ON DELETE CASCADE,
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
     nombre VARCHAR(255) NOT NULL,
     categoria VARCHAR(100),
     descripcion TEXT,
@@ -51,7 +51,7 @@ ALTER TABLE inventory_items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own inventory items" ON inventory_items
     FOR SELECT USING (
         user_id IN (
-            SELECT id FROM usuarios WHERE auth_user_id = auth.uid()
+            SELECT id FROM users WHERE auth_user_id = auth.uid()
         )
     );
 
@@ -59,7 +59,7 @@ CREATE POLICY "Users can view their own inventory items" ON inventory_items
 CREATE POLICY "Users can insert their own inventory items" ON inventory_items
     FOR INSERT WITH CHECK (
         user_id IN (
-            SELECT id FROM usuarios WHERE auth_user_id = auth.uid()
+            SELECT id FROM users WHERE auth_user_id = auth.uid()
         )
     );
 
@@ -67,7 +67,7 @@ CREATE POLICY "Users can insert their own inventory items" ON inventory_items
 CREATE POLICY "Users can update their own inventory items" ON inventory_items
     FOR UPDATE USING (
         user_id IN (
-            SELECT id FROM usuarios WHERE auth_user_id = auth.uid()
+            SELECT id FROM users WHERE auth_user_id = auth.uid()
         )
     );
 
@@ -75,7 +75,7 @@ CREATE POLICY "Users can update their own inventory items" ON inventory_items
 CREATE POLICY "Users can delete their own inventory items" ON inventory_items
     FOR DELETE USING (
         user_id IN (
-            SELECT id FROM usuarios WHERE auth_user_id = auth.uid()
+            SELECT id FROM users WHERE auth_user_id = auth.uid()
         )
     );
 

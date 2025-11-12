@@ -10,7 +10,7 @@ class UserModel {
   final DateTime? fechaNacimiento;
   final String? experienciaAgricola;
   final String? tamanoFinca;
-  final String? tipoAgricultura;
+  final String? primaryCrops;
   final bool emailConfirmado;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -29,7 +29,7 @@ class UserModel {
     this.fechaNacimiento,
     this.experienciaAgricola,
     this.tamanoFinca,
-    this.tipoAgricultura,
+    this.primaryCrops,
     this.emailConfirmado = false,
     this.createdAt,
     this.updatedAt,
@@ -37,53 +37,55 @@ class UserModel {
     this.needsSync = false,
   });
 
-  // Convertir desde Map (SQLite)
+  // Convertir desde Map (SQLite) usando claves en inglés
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
       id: map['id'],
-      nombre: map['nombre'] ?? '',
-      apellido: map['apellido'],
+      nombre: map['first_name'] ?? map['nombre'] ?? '',
+      apellido: map['last_name'] ?? map['apellido'],
       email: map['email'] ?? '',
-      telefono: map['telefono'],
-      ubicacion: map['ubicacion'],
+      telefono: map['phone'] ?? map['telefono'],
+      ubicacion: map['location'] ?? map['ubicacion'],
       bio: map['bio'],
       profileImageUrl: map['profile_image_url'],
-      fechaNacimiento: map['fecha_nacimiento'] != null 
-          ? DateTime.parse(map['fecha_nacimiento']) 
+      fechaNacimiento: map['birth_date'] != null
+          ? DateTime.parse(map['birth_date'])
+          : (map['fecha_nacimiento'] != null
+              ? DateTime.parse(map['fecha_nacimiento'])
+              : null),
+      experienciaAgricola: map['farming_experience'] ?? map['experiencia_agricola'],
+      tamanoFinca: map['farm_size']?.toString() ?? map['tamano_finca'],
+      primaryCrops: map['primary_crops'] ?? map['tipo_agricultura'],
+      emailConfirmado: map['email_confirmed'] == true || map['email_confirmado'] == true || map['email_confirmado'] == 1,
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'])
           : null,
-      experienciaAgricola: map['experiencia_agricola'],
-      tamanoFinca: map['tamano_finca'],
-      tipoAgricultura: map['tipo_agricultura'],
-      emailConfirmado: map['email_confirmado'] == true || map['email_confirmado'] == 1,
-      createdAt: map['created_at'] != null 
-          ? DateTime.parse(map['created_at']) 
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'])
           : null,
-      updatedAt: map['updated_at'] != null 
-          ? DateTime.parse(map['updated_at']) 
-          : null,
-      lastSyncAt: map['last_sync_at'] != null 
-          ? DateTime.parse(map['last_sync_at']) 
+      lastSyncAt: map['last_sync_at'] != null
+          ? DateTime.parse(map['last_sync_at'])
           : null,
       needsSync: map['needs_sync'] == true || map['needs_sync'] == 1,
     );
   }
 
-  // Convertir a Map (SQLite)
+  // Convertir a Map (SQLite) usando claves en inglés
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'nombre': nombre,
-      'apellido': apellido,
+      'first_name': nombre,
+      'last_name': apellido,
       'email': email,
-      'telefono': telefono,
-      'ubicacion': ubicacion,
+      'phone': telefono,
+      'location': ubicacion,
       'bio': bio,
       'profile_image_url': profileImageUrl,
-      'fecha_nacimiento': fechaNacimiento?.toIso8601String(),
-      'experiencia_agricola': experienciaAgricola,
-      'tamano_finca': tamanoFinca,
-      'tipo_agricultura': tipoAgricultura,
-      'email_confirmado': emailConfirmado,
+      'birth_date': fechaNacimiento?.toIso8601String(),
+      'farming_experience': experienciaAgricola,
+      'farm_size': tamanoFinca,
+      'primary_crops': primaryCrops,
+      'email_confirmed': emailConfirmado,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'last_sync_at': lastSyncAt?.toIso8601String(),
@@ -91,47 +93,51 @@ class UserModel {
     };
   }
 
-  // Convertir desde JSON (Supabase)
+  // Convertir desde JSON (Supabase) usando claves en inglés
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'],
-      nombre: json['nombre'] ?? '',
+      nombre: json['first_name'] ?? json['nombre'] ?? '',
+      apellido: json['last_name'] ?? json['apellido'],
       email: json['email'] ?? '',
-      telefono: json['telefono'],
-      ubicacion: json['ubicacion'],
+      telefono: json['phone'] ?? json['telefono'],
+      ubicacion: json['location'] ?? json['ubicacion'],
       bio: json['bio'],
       profileImageUrl: json['profile_image_url'],
-      fechaNacimiento: json['fecha_nacimiento'] != null 
-          ? DateTime.parse(json['fecha_nacimiento'])
-          : null,
-      experienciaAgricola: json['experiencia_agricola'],
-      tamanoFinca: json['tamano_finca'],
-      tipoAgricultura: json['tipo_agricultura'],
-      emailConfirmado: json['email_confirmado'] ?? false,
-      createdAt: json['created_at'] != null 
+      fechaNacimiento: json['birth_date'] != null
+          ? DateTime.parse(json['birth_date'])
+          : (json['fecha_nacimiento'] != null
+              ? DateTime.parse(json['fecha_nacimiento'])
+              : null),
+      experienciaAgricola: json['farming_experience'] ?? json['experiencia_agricola'],
+      tamanoFinca: json['farm_size']?.toString() ?? json['tamano_finca'],
+      primaryCrops: json['primary_crops'] ?? json['tipo_agricultura'],
+      emailConfirmado: json['email_confirmed'] ?? json['email_confirmado'] ?? false,
+      createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
-      updatedAt: json['updated_at'] != null 
+      updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : null,
     );
   }
 
-  // Convertir a JSON (Supabase)
+  // Convertir a JSON (Supabase) usando claves en inglés
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'nombre': nombre,
+      'first_name': nombre,
+      'last_name': apellido,
       'email': email,
-      'telefono': telefono,
-      'ubicacion': ubicacion,
+      'phone': telefono,
+      'location': ubicacion,
       'bio': bio,
       'profile_image_url': profileImageUrl,
-      'fecha_nacimiento': fechaNacimiento?.toIso8601String(),
-      'experiencia_agricola': experienciaAgricola,
-      'tamano_finca': tamanoFinca,
-      'tipo_agricultura': tipoAgricultura,
-      'email_confirmado': emailConfirmado,
+      'birth_date': fechaNacimiento?.toIso8601String(),
+      'farming_experience': experienciaAgricola,
+      'farm_size': tamanoFinca,
+      'primary_crops': primaryCrops,
+      'email_confirmed': emailConfirmado,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };
@@ -150,7 +156,7 @@ class UserModel {
     DateTime? fechaNacimiento,
     String? experienciaAgricola,
     String? tamanoFinca,
-    String? tipoAgricultura,
+    String? primaryCrops,
     bool? emailConfirmado,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -169,7 +175,7 @@ class UserModel {
       fechaNacimiento: fechaNacimiento ?? this.fechaNacimiento,
       experienciaAgricola: experienciaAgricola ?? this.experienciaAgricola,
       tamanoFinca: tamanoFinca ?? this.tamanoFinca,
-      tipoAgricultura: tipoAgricultura ?? this.tipoAgricultura,
+      primaryCrops: primaryCrops ?? this.primaryCrops,
       emailConfirmado: emailConfirmado ?? this.emailConfirmado,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -180,7 +186,7 @@ class UserModel {
 
   @override
   String toString() {
-    return 'UserModel(id: $id, nombre: $nombre, apellido: $apellido, email: $email, telefono: $telefono, ubicacion: $ubicacion, fechaNacimiento: $fechaNacimiento, experienciaAgricola: $experienciaAgricola, tamanoFinca: $tamanoFinca, tipoAgricultura: $tipoAgricultura, emailConfirmado: $emailConfirmado, createdAt: $createdAt, updatedAt: $updatedAt, lastSyncAt: $lastSyncAt, needsSync: $needsSync)';
+    return 'UserModel(id: $id, nombre: $nombre, apellido: $apellido, email: $email, telefono: $telefono, ubicacion: $ubicacion, fechaNacimiento: $fechaNacimiento, experienciaAgricola: $experienciaAgricola, tamanoFinca: $tamanoFinca, primaryCrops: $primaryCrops, emailConfirmado: $emailConfirmado, createdAt: $createdAt, updatedAt: $updatedAt, lastSyncAt: $lastSyncAt, needsSync: $needsSync)';
   }
 
   @override
@@ -197,7 +203,7 @@ class UserModel {
       other.fechaNacimiento == fechaNacimiento &&
       other.experienciaAgricola == experienciaAgricola &&
       other.tamanoFinca == tamanoFinca &&
-      other.tipoAgricultura == tipoAgricultura &&
+    other.primaryCrops == primaryCrops &&
       other.emailConfirmado == emailConfirmado &&
       other.createdAt == createdAt &&
       other.updatedAt == updatedAt &&
@@ -216,7 +222,7 @@ class UserModel {
       fechaNacimiento.hashCode ^
       experienciaAgricola.hashCode ^
       tamanoFinca.hashCode ^
-      tipoAgricultura.hashCode ^
+    (primaryCrops?.hashCode ?? 0) ^
       emailConfirmado.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode ^

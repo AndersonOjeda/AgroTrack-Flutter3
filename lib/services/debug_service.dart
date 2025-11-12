@@ -26,7 +26,7 @@ class DebugService {
         return {'error': 'No hay sesión activa'};
       }
       final response = await _client
-          .from('usuarios')
+          .from('users')
           .select('*')
           .eq('auth_user_id', session!.user.id)
           .maybeSingle();
@@ -48,19 +48,19 @@ class DebugService {
       }
       final user = session!.user;
       final response = await _client
-          .from('usuarios')
+          .from('users')
           .insert({
             'auth_user_id': user.id,
             'email': user.email,
-            'nombre': user.userMetadata?['nombre'] ?? 'Usuario',
-            'apellido': user.userMetadata?['apellido'] ?? '',
-            'telefono': user.userMetadata?['telefono'],
-            'ubicacion': user.userMetadata?['ubicacion'],
-            'experiencia_agricola': user.userMetadata?['experiencia_agricola'],
-            'tamano_finca': user.userMetadata?['tamano_finca'],
-            'tipo_agricultura': user.userMetadata?['tipo_agricultura'],
-            'fecha_nacimiento': user.userMetadata?['fecha_nacimiento'],
-            'email_confirmado': user.emailConfirmedAt != null,
+            'first_name': user.userMetadata?['first_name'] ?? user.userMetadata?['nombre'] ?? 'User',
+            'last_name': user.userMetadata?['last_name'] ?? user.userMetadata?['apellido'] ?? '',
+            'phone': user.userMetadata?['phone'] ?? user.userMetadata?['telefono'],
+            'location': user.userMetadata?['location'] ?? user.userMetadata?['ubicacion'],
+            'farming_experience': user.userMetadata?['farming_experience'] ?? user.userMetadata?['experiencia_agricola'],
+            'farm_size': user.userMetadata?['farm_size'] ?? user.userMetadata?['tamano_finca'],
+            'primary_crops': user.userMetadata?['primary_crops'] ?? user.userMetadata?['tipo_agricultura'],
+            'birth_date': user.userMetadata?['birth_date'] ?? user.userMetadata?['fecha_nacimiento'],
+            'email_confirmed': user.emailConfirmedAt != null,
             'created_at': DateTime.now().toIso8601String(),
             'updated_at': DateTime.now().toIso8601String(),
           })
@@ -75,7 +75,7 @@ class DebugService {
   static Future<Map<String, dynamic>> getAllUsers() async {
     try {
       final response = await _client
-          .from('usuarios')
+          .from('users')
           .select('*')
           .order('created_at', ascending: false);
       return {'total_users': response.length, 'users': response};

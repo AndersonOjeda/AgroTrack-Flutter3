@@ -33,6 +33,9 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Gradle user home cache (local-only)
+.gradle_user_home/
+
 # Symbolication related
 app.*.symbols
 

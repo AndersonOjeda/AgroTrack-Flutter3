@@ -5,7 +5,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/weather_service.dart';
-import '../models/weather_data.dart';
 import '../services/logger_service.dart';
 import '../services/weather_state_provider.dart';
 
@@ -27,7 +26,10 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
     super.initState();
     // Solo cargar clima actual si no hay datos previos
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final weatherProvider = Provider.of<WeatherStateProvider>(context, listen: false);
+      final weatherProvider = Provider.of<WeatherStateProvider>(
+        context,
+        listen: false,
+      );
       if (!weatherProvider.hasWeatherData) {
         _getCurrentLocationWeather();
       }
@@ -46,16 +48,18 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final timestamp = prefs.getInt('location_update_timestamp') ?? 0;
-      
+
       if (timestamp > _lastUpdateTimestamp) {
         _lastUpdateTimestamp = timestamp;
-        
+
         final lat = prefs.getDouble('selected_latitude');
         final lng = prefs.getDouble('selected_longitude');
         final locationName = prefs.getString('selected_location');
-        
+
         if (lat != null && lng != null && locationName != null) {
-          LoggerService.info('Detectado cambio de ubicación desde SharedPreferences: $locationName');
+          LoggerService.info(
+            'Detectado cambio de ubicación desde SharedPreferences: $locationName',
+          );
           await _updateWeatherFromPreferences(lat, lng, locationName);
         }
       }
@@ -64,22 +68,37 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
     }
   }
 
-  Future<void> _updateWeatherFromPreferences(double lat, double lng, String locationName) async {
-    final weatherProvider = Provider.of<WeatherStateProvider>(context, listen: false);
-    
+  Future<void> _updateWeatherFromPreferences(
+    double lat,
+    double lng,
+    String locationName,
+  ) async {
+    final weatherProvider = Provider.of<WeatherStateProvider>(
+      context,
+      listen: false,
+    );
+
     try {
       weatherProvider.setLoading(true);
-      
-      final weatherData = await _weatherService.getWeatherData(lat, lng, locationName);
-      
+
+      final weatherData = await _weatherService.getWeatherData(
+        lat,
+        lng,
+        locationName,
+      );
+
       if (weatherData != null) {
         weatherProvider.updateSelectedWeather(weatherData);
-        LoggerService.info('Widget de clima actualizado desde SharedPreferences: $locationName');
+        LoggerService.info(
+          'Widget de clima actualizado desde SharedPreferences: $locationName',
+        );
       } else {
         weatherProvider.setError('No se pudieron obtener los datos del clima');
       }
     } catch (e) {
-      LoggerService.error('Error actualizando clima desde SharedPreferences: $e');
+      LoggerService.error(
+        'Error actualizando clima desde SharedPreferences: $e',
+      );
       weatherProvider.setError('Error al obtener el clima: ${e.toString()}');
     }
   }
@@ -92,7 +111,10 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
   }
 
   Future<void> _getCurrentLocationWeather() async {
-    final weatherProvider = Provider.of<WeatherStateProvider>(context, listen: false);
+    final weatherProvider = Provider.of<WeatherStateProvider>(
+      context,
+      listen: false,
+    );
     weatherProvider.setLoading(true);
 
     try {
@@ -112,39 +134,44 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        weatherProvider.setError('Permisos de ubicación denegados permanentemente');
+        weatherProvider.setError(
+          'Permisos de ubicación denegados permanentemente',
+        );
         return;
       }
 
       Position position = await Geolocator.getCurrentPosition();
-      
+
       // Obtener nombre de la ubicación
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
       );
-      
+
       String locationName = 'Mi ubicación';
       if (placemarks.isNotEmpty) {
         final placemark = placemarks.first;
         // Construir el nombre en formato ciudad, departamento
         String city = '';
         String department = '';
-        
+
         // Obtener ciudad (locality, subLocality, o subAdministrativeArea)
         if (placemark.locality != null && placemark.locality!.isNotEmpty) {
           city = placemark.locality!;
-        } else if (placemark.subLocality != null && placemark.subLocality!.isNotEmpty) {
+        } else if (placemark.subLocality != null &&
+            placemark.subLocality!.isNotEmpty) {
           city = placemark.subLocality!;
-        } else if (placemark.subAdministrativeArea != null && placemark.subAdministrativeArea!.isNotEmpty) {
+        } else if (placemark.subAdministrativeArea != null &&
+            placemark.subAdministrativeArea!.isNotEmpty) {
           city = placemark.subAdministrativeArea!;
         }
-        
+
         // Obtener departamento (administrativeArea)
-        if (placemark.administrativeArea != null && placemark.administrativeArea!.isNotEmpty) {
+        if (placemark.administrativeArea != null &&
+            placemark.administrativeArea!.isNotEmpty) {
           department = placemark.administrativeArea!;
         }
-        
+
         // Construir el nombre final
         if (city.isNotEmpty && department.isNotEmpty) {
           locationName = '$city, $department';
@@ -164,7 +191,7 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
       );
 
       if (weatherData != null) {
-        weatherProvider.updateSelectedWeather(weatherData);
+        weatherProvider.updateWeather(weatherData, locationName);
       } else {
         weatherProvider.setError('No se pudieron obtener los datos del clima');
       }
@@ -178,7 +205,10 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
     final query = _locationController.text.trim();
     if (query.isEmpty) return;
 
-    final weatherProvider = Provider.of<WeatherStateProvider>(context, listen: false);
+    final weatherProvider = Provider.of<WeatherStateProvider>(
+      context,
+      listen: false,
+    );
     weatherProvider.setLoading(true);
 
     try {
@@ -192,9 +222,11 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
         );
 
         if (weatherData != null) {
-          weatherProvider.updateSelectedWeather(weatherData);
+          weatherProvider.updateWeather(weatherData, query);
         } else {
-          weatherProvider.setError('No se pudieron obtener los datos del clima para esta ubicación');
+          weatherProvider.setError(
+            'No se pudieron obtener los datos del clima para esta ubicación',
+          );
         }
       } else {
         weatherProvider.setError('No se encontró la ubicación especificada');
@@ -202,7 +234,7 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
     } catch (e) {
       LoggerService.error('Error buscando ubicación: $e');
       weatherProvider.setError('Error al buscar la ubicación: ${e.toString()}');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -277,170 +309,166 @@ class _SimpleWeatherWidgetState extends State<SimpleWeatherWidget> {
                   ],
                 )
               : weatherProvider.hasWeatherData
-                  ? Row(
+              ? Row(
+                  children: [
+                    // Icono del clima
+                    Text(
+                      weatherProvider.weatherIcon,
+                      style: const TextStyle(fontSize: 32),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Información del clima
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            weatherProvider.weatherSummary,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            weatherProvider.currentLocation,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          Text(
+                            'Datos del mapa sincronizados',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Botones de acción
+                    Column(
                       children: [
-                        // Icono del clima
-                        Text(
-                          weatherProvider.weatherIcon,
-                          style: const TextStyle(fontSize: 32),
-                        ),
-                        const SizedBox(width: 12),
-                        
-                        // Información del clima
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                weatherProvider.weatherSummary,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              Text(
-                                weatherProvider.currentLocation,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                              Text(
-                                'Datos del mapa sincronizados',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.green.shade600,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                        IconButton(
+                          icon: const Icon(Icons.search, size: 20),
+                          onPressed: _showLocationSearch,
+                          tooltip: 'Buscar ubicación',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.blue.shade50,
+                            foregroundColor: Colors.blue.shade700,
                           ),
                         ),
-                        
-                        // Botones de acción
-                        Column(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.search, size: 20),
-                              onPressed: _showLocationSearch,
-                              tooltip: 'Buscar ubicación',
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.blue.shade50,
-                                foregroundColor: Colors.blue.shade700,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.my_location, size: 20),
-                              onPressed: _getCurrentLocationWeather,
-                              tooltip: 'Mi ubicación',
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.green.shade50,
-                                foregroundColor: Colors.green.shade700,
-                              ),
-                            ),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.my_location, size: 20),
+                          onPressed: _getCurrentLocationWeather,
+                          tooltip: 'Mi ubicación',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.green.shade50,
+                            foregroundColor: Colors.green.shade700,
+                          ),
                         ),
                       ],
-                    )
-                  : weatherProvider.errorMessage != null
-                      ? Row(
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
+                    ),
+                  ],
+                )
+              : weatherProvider.errorMessage != null
+              ? Row(
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Error al cargar clima',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            weatherProvider.errorMessage!,
+                            style: const TextStyle(
+                              fontSize: 12,
                               color: Colors.red,
-                              size: 24,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Error al cargar clima',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  Text(
-                                    weatherProvider.errorMessage!,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.red,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 20),
+                      onPressed: _getCurrentLocationWeather,
+                      tooltip: 'Reintentar',
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.red.shade50,
+                        foregroundColor: Colors.red.shade700,
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    const Icon(Icons.wb_sunny, color: Colors.orange, size: 24),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Widget del clima',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.refresh, size: 20),
-                              onPressed: _getCurrentLocationWeather,
-                              tooltip: 'Reintentar',
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.red.shade50,
-                                foregroundColor: Colors.red.shade700,
-                              ),
+                          ),
+                          Text(
+                            'Toca en el mapa o busca una ubicación',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
                             ),
-                          ],
-                        )
-                      : Row(
-                          children: [
-                            const Icon(
-                              Icons.wb_sunny,
-                              color: Colors.orange,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Widget del clima',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Toca en el mapa o busca una ubicación',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.black54,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Column(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.search, size: 20),
-                                  onPressed: _showLocationSearch,
-                                  tooltip: 'Buscar ubicación',
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: Colors.blue.shade50,
-                                    foregroundColor: Colors.blue.shade700,
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.my_location, size: 20),
-                                  onPressed: _getCurrentLocationWeather,
-                                  tooltip: 'Mi ubicación',
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: Colors.green.shade50,
-                                    foregroundColor: Colors.green.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.search, size: 20),
+                          onPressed: _showLocationSearch,
+                          tooltip: 'Buscar ubicación',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.blue.shade50,
+                            foregroundColor: Colors.blue.shade700,
+                          ),
                         ),
+                        IconButton(
+                          icon: const Icon(Icons.my_location, size: 20),
+                          onPressed: _getCurrentLocationWeather,
+                          tooltip: 'Mi ubicación',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.green.shade50,
+                            foregroundColor: Colors.green.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
         );
       },
     );

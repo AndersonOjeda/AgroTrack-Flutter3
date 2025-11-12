@@ -11,7 +11,7 @@ class AuthGate extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!SupabaseService.isReady) {
       return const Scaffold(
-        body: Center(child: Text('Configura SUPABASE_URL y ANON_KEY en .env')),
+        body: Center(child: Text('Set SUPABASE_URL and ANON_KEY in .env')),
       );
     }
 
@@ -23,7 +23,7 @@ class AuthGate extends StatelessWidget {
 
         if (snapshot.hasError) {
           return const Scaffold(
-            body: Center(child: Text('Error de autenticación. Intenta nuevamente')),
+            body: Center(child: Text('Authentication error. Please try again')),
           );
         }
 

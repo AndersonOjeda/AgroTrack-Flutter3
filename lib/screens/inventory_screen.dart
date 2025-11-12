@@ -420,7 +420,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       result['user_authenticated'],
                     ),
                     _DiagnosticItem(
-                      'Tabla usuarios',
+        'Users table',
                       result['usuarios_table_exists'] ? 'Existe' : 'No existe',
                       result['usuarios_table_exists'],
                     ),
@@ -1216,13 +1216,16 @@ class _AddItemDialogState extends State<_AddItemDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final dialogWidth = screenWidth > 600 ? 400.0 : screenWidth * 0.9;
+    
     return AlertDialog(
       title: const Text(
         'Agregar Producto',
         style: TextStyle(fontFamily: 'NotoSans'),
       ),
       content: SizedBox(
-        width: 400,
+        width: dialogWidth,
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -1244,50 +1247,118 @@ class _AddItemDialogState extends State<_AddItemDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _selectedCategory,
-                        decoration: const InputDecoration(
-                          labelText: 'Categoría',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _categories.map((category) {
-                          return DropdownMenuItem(
-                            value: category,
-                            child: Text(category),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedCategory = value!;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _selectedUnidad,
-                        decoration: const InputDecoration(
-                          labelText: 'Unidad',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _unidades.map((unidad) {
-                          return DropdownMenuItem(
-                            value: unidad,
-                            child: Text(unidad),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedUnidad = value!;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Si el ancho es muy pequeño, usar layout vertical
+                    if (constraints.maxWidth < 300) {
+                      return Column(
+                        children: [
+                          DropdownButtonFormField<String>(
+                            initialValue: _selectedCategory,
+                            decoration: const InputDecoration(
+                              labelText: 'Categoría',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: _categories.map((category) {
+                              return DropdownMenuItem(
+                                value: category,
+                                child: Text(
+                                  category,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedCategory = value!;
+                              });
+                            },
+                            isExpanded: true,
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            initialValue: _selectedUnidad,
+                            decoration: const InputDecoration(
+                              labelText: 'Unidad',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: _unidades.map((unidad) {
+                              return DropdownMenuItem(
+                                value: unidad,
+                                child: Text(
+                                  unidad,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedUnidad = value!;
+                              });
+                            },
+                            isExpanded: true,
+                          ),
+                        ],
+                      );
+                    } else {
+                      // Layout horizontal para pantallas más grandes
+                      return Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _selectedCategory,
+                              decoration: const InputDecoration(
+                                labelText: 'Categoría',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: _categories.map((category) {
+                                return DropdownMenuItem(
+                                  value: category,
+                                  child: Text(
+                                    category,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedCategory = value!;
+                                });
+                              },
+                              isExpanded: true,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 1,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _selectedUnidad,
+                              decoration: const InputDecoration(
+                                labelText: 'Unidad',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: _unidades.map((unidad) {
+                                return DropdownMenuItem(
+                                  value: unidad,
+                                  child: Text(
+                                    unidad,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedUnidad = value!;
+                                });
+                              },
+                              isExpanded: true,
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                  },
                 ),
                 const SizedBox(height: 16),
 

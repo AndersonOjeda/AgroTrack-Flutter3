@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../services/user_service.dart';
-import '../services/logger_service.dart';
 import '../services/weather_state_provider.dart';
 import '../widgets/simple_weather_widget.dart';
 import 'chat_bot.dart';
@@ -52,7 +51,8 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, weatherProvider, child) {
         // Sincronizar la ubicación con el clima cuando esté disponible
         String displayLocation = _userLocation;
-        if (weatherProvider.hasWeatherData && weatherProvider.currentLocation.isNotEmpty) {
+        if (weatherProvider.hasWeatherData &&
+            weatherProvider.currentLocation.isNotEmpty) {
           displayLocation = weatherProvider.currentLocation;
         }
 
@@ -129,174 +129,178 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ],
                               ),
-                          const SizedBox(height: 30),
+                              const SizedBox(height: 30),
 
-                          // Saludo personalizado
-                          Text(
-                            'Hola $_userName,',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            'Bienvenido',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
+                              // Saludo personalizado
+                              Text(
+                                'Hola $_userName,',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const Text(
+                                'Bienvenido',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
 
-                          // Widgets de información
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                // Widget de fecha y hora
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.1),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.access_time,
-                                        color: Colors.green,
-                                        size: 24,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              _currentTime,
-                                              style: const TextStyle(
-                                                fontSize: 24,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                            Text(
-                                              _currentDate,
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.black54,
-                                              ),
-                                            ),
-                                          ],
+                              // Widgets de información
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    // Widget de fecha y hora
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
                                         ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.access_time,
+                                            color: Colors.green,
+                                            size: 24,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  _currentTime,
+                                                  style: const TextStyle(
+                                                    fontSize: 24,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.black87,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  _currentDate,
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.black54,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Widget del clima
+                                    const SimpleWeatherWidget(),
+                                  ],
                                 ),
-                                const SizedBox(height: 12),
-
-                                // Widget del clima
-                                const SimpleWeatherWidget(),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
 
-            // Sección inferior (mitad de la pantalla)
-            Expanded(
-              flex: 1,
-              child: Container(
-                width: double.infinity,
-                color: Colors.grey.shade50,
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Funciones de AgroTrack',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                // Sección inferior (mitad de la pantalla)
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    width: double.infinity,
+                    color: Colors.grey.shade50,
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Funciones de AgroTrack',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
 
-                    // Grid de funciones
-                    Expanded(
-                      child: GridView.count(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        children: [
-                          _buildFunctionCard(
-                            icon: Icons.smart_toy,
-                            title: 'Chatbot Agrícola',
-                            subtitle: 'Asistente con IA',
-                            color: Colors.blue,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ChatBot(),
-                                ),
-                              );
-                            },
+                        // Grid de funciones
+                        Expanded(
+                          child: GridView.count(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            children: [
+                              _buildFunctionCard(
+                                icon: Icons.smart_toy,
+                                title: 'Chatbot Agrícola',
+                                subtitle: 'Asistente con IA',
+                                color: Colors.blue,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const ChatBot(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildFunctionCard(
+                                icon: Icons.people,
+                                title: 'Comunidad',
+                                subtitle: 'Conecta con agricultores',
+                                color: Colors.green,
+                                onTap: () {
+                                  // TODO: Implementar navegación a comunidad
+                                },
+                              ),
+                              _buildFunctionCard(
+                                icon: Icons.analytics,
+                                title: 'Análisis',
+                                subtitle: 'Datos de tu cultivo',
+                                color: Colors.purple,
+                                onTap: () {
+                                  // TODO: Implementar navegación a análisis
+                                },
+                              ),
+                              _buildFunctionCard(
+                                icon: Icons.calendar_today,
+                                title: 'Calendario',
+                                subtitle: 'Planifica actividades',
+                                color: Colors.orange,
+                                onTap: () {
+                                  // TODO: Implementar navegación a calendario
+                                },
+                              ),
+                            ],
                           ),
-                          _buildFunctionCard(
-                            icon: Icons.people,
-                            title: 'Comunidad',
-                            subtitle: 'Conecta con agricultores',
-                            color: Colors.green,
-                            onTap: () {
-                              // TODO: Implementar navegación a comunidad
-                            },
-                          ),
-                          _buildFunctionCard(
-                            icon: Icons.analytics,
-                            title: 'Análisis',
-                            subtitle: 'Datos de tu cultivo',
-                            color: Colors.purple,
-                            onTap: () {
-                              // TODO: Implementar navegación a análisis
-                            },
-                          ),
-                          _buildFunctionCard(
-                            icon: Icons.calendar_today,
-                            title: 'Calendario',
-                            subtitle: 'Planifica actividades',
-                            color: Colors.orange,
-                            onTap: () {
-                              // TODO: Implementar navegación a calendario
-                            },
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+        );
       },
     );
   }

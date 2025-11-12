@@ -1,6 +1,3 @@
--- =====================================================
--- ESQUEMA AGROTRACK - BASE DE DATOS SUPABASE
--- =====================================================
 -- 
 -- Este esquema define la estructura inicial para la aplicación AgroTrack
 -- Incluye:
@@ -18,7 +15,7 @@ create extension if not exists pgcrypto;
 create extension if not exists "uuid-ossp";
 
 -- =====================================================
--- TABLA PRINCIPAL: USUARIOS
+-- MAIN TABLE: USERS
 -- =====================================================
 -- 
 -- Almacena información completa de los usuarios de AgroTrack
@@ -31,39 +28,39 @@ create extension if not exists "uuid-ossp";
 -- - Control: email_confirmado, activo, fechas de auditoría
 -- =====================================================
 
--- Tabla usuarios según especificación
-create table if not exists public.usuarios (
+-- Primary users table (English column names)
+create table if not exists public.users (
   id uuid primary key default uuid_generate_v4(),
   email varchar(255) unique not null,
-  nombre varchar(100) not null default '',
-  apellido varchar(100) not null default '',
-  telefono varchar(20),
-  ubicacion text,
-  tipo_agricultura varchar(50),
-  experiencia_agricola text,
-  tamano_finca numeric,
-  fecha_nacimiento date,
+  first_name varchar(100) not null default '',
+  last_name varchar(100) not null default '',
+  phone varchar(20),
+  location text,
+  farming_type varchar(50),
+  farming_experience text,
+  farm_size numeric,
+  birth_date date,
   bio text,
   profile_image_url text,
-  email_confirmado boolean default false,
-  fecha_confirmacion_email timestamp with time zone,
+  email_confirmed boolean default false,
+  email_confirmed_at timestamp with time zone,
   auth_user_id uuid unique,
-  fecha_registro timestamp with time zone default now(),
-  activo boolean default true,
-  fecha_eliminacion timestamp with time zone,
+  registered_at timestamp with time zone default now(),
+  active boolean default true,
+  deleted_at timestamp with time zone,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
 
 -- Asegurar columnas requeridas en despliegues existentes antes de RLS
-alter table if exists public.usuarios add column if not exists auth_user_id uuid unique;
-alter table if exists public.usuarios add column if not exists email_confirmado boolean default false;
-alter table if exists public.usuarios add column if not exists fecha_confirmacion_email timestamp with time zone;
-alter table if exists public.usuarios add column if not exists experiencia_agricola text;
-alter table if exists public.usuarios add column if not exists tamano_finca numeric;
-alter table if exists public.usuarios add column if not exists fecha_nacimiento date;
-alter table if exists public.usuarios add column if not exists bio text;
-alter table if exists public.usuarios add column if not exists profile_image_url text;
+alter table if exists public.users add column if not exists auth_user_id uuid unique;
+alter table if exists public.users add column if not exists email_confirmed boolean default false;
+alter table if exists public.users add column if not exists email_confirmed_at timestamp with time zone;
+alter table if exists public.users add column if not exists farming_experience text;
+alter table if exists public.users add column if not exists farm_size numeric;
+alter table if exists public.users add column if not exists birth_date date;
+alter table if exists public.users add column if not exists bio text;
+alter table if exists public.users add column if not exists profile_image_url text;
 
 -- Vincular usuarios.auth_user_id con auth.users.id (FK condicional)
 do $$
@@ -71,8 +68,8 @@ begin
   if not exists (
     select 1 from pg_constraint where conname = 'usuarios_auth_user_fk'
   ) then
-    alter table public.usuarios
-      add constraint usuarios_auth_user_fk
+    alter table public.users
+      add constraint users_auth_user_fk
       foreign key (auth_user_id)
       references auth.users(id)
       on delete set null;
@@ -88,15 +85,15 @@ end $$;
 -- =====================================================
 
 -- RLS
-alter table if exists public.usuarios enable row level security;
+alter table if exists public.users enable row level security;
 
 -- Eliminar políticas existentes antes de crearlas
-drop policy if exists "Usuarios viewable by owner" on public.usuarios;
-drop policy if exists "Usuarios manageable by owner" on public.usuarios;
+drop policy if exists "Users viewable by owner" on public.users;
+drop policy if exists "Users manageable by owner" on public.users;
 
-create policy "Usuarios viewable by owner" on public.usuarios
+create policy "Users viewable by owner" on public.users
   for select using (auth.uid() = auth_user_id);
-create policy "Usuarios manageable by owner" on public.usuarios
+create policy "Users manageable by owner" on public.users
   for all using (auth.uid() = auth_user_id);
 
 -- =====================================================
@@ -116,44 +113,54 @@ begin
 end;
 $$ language plpgsql;
 
-drop trigger if exists usuarios_set_updated_at on public.usuarios;
-create trigger usuarios_set_updated_at
-  before update on public.usuarios
+drop trigger if exists users_set_updated_at on public.users;
+create trigger users_set_updated_at
+  before update on public.users
   for each row execute function public.set_updated_at();
 
--- Trigger: poblar usuarios al registrarse
-create or replace function public.handle_new_user_usuarios()
+-- Trigger: populate users on auth registration
+create or replace function public.handle_new_user_users()
 returns trigger as $$
 begin
   -- Verificar si el usuario ya existe para evitar duplicados
-  if exists (select 1 from public.usuarios where auth_user_id = new.id) then
+  if exists (select 1 from public.users where auth_user_id = new.id) then
     return new;
   end if;
   
-  insert into public.usuarios (
+  insert into public.users (
     auth_user_id,
     email,
-    nombre,
-    apellido,
-    ubicacion,
-    experiencia_agricola,
-    tamano_finca,
-    tipo_agricultura,
-    fecha_nacimiento,
+    first_name,
+    last_name,
+    location,
+    farming_experience,
+    farm_size,
+    farming_type,
+    birth_date,
     bio,
     profile_image_url,
-    email_confirmado
+    email_confirmed
   )
   values (
     new.id,
     new.email,
-    coalesce((new.raw_user_meta_data ->> 'nombre'), ''),
-    coalesce((new.raw_user_meta_data ->> 'apellido'), ''),
-    (new.raw_user_meta_data ->> 'ubicacion'),
-    (new.raw_user_meta_data ->> 'experiencia_agricola'),
-    nullif((new.raw_user_meta_data ->> 'tamano_finca'), '')::numeric,
-    (new.raw_user_meta_data ->> 'tipo_agricultura'),
-    nullif((new.raw_user_meta_data ->> 'fecha_nacimiento'), '')::date,
+    coalesce((new.raw_user_meta_data ->> 'first_name'), (new.raw_user_meta_data ->> 'nombre'), ''),
+    coalesce((new.raw_user_meta_data ->> 'last_name'), (new.raw_user_meta_data ->> 'apellido'), ''),
+    coalesce((new.raw_user_meta_data ->> 'location'), (new.raw_user_meta_data ->> 'ubicacion')),
+    coalesce((new.raw_user_meta_data ->> 'farming_experience'), (new.raw_user_meta_data ->> 'experiencia_agricola')),
+    case
+      when coalesce((new.raw_user_meta_data ->> 'farm_size'), (new.raw_user_meta_data ->> 'tamano_finca')) ~ '^[0-9]+(\.[0-9]+)?$'
+        then coalesce((new.raw_user_meta_data ->> 'farm_size'), (new.raw_user_meta_data ->> 'tamano_finca'))::numeric
+      else null
+    end,
+    coalesce((new.raw_user_meta_data ->> 'farming_type'), (new.raw_user_meta_data ->> 'tipo_agricultura')),
+    case
+      when coalesce((new.raw_user_meta_data ->> 'birth_date'), (new.raw_user_meta_data ->> 'fecha_nacimiento')) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+        then coalesce((new.raw_user_meta_data ->> 'birth_date'), (new.raw_user_meta_data ->> 'fecha_nacimiento'))::date
+      when coalesce((new.raw_user_meta_data ->> 'birth_date'), (new.raw_user_meta_data ->> 'fecha_nacimiento')) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'
+        then (coalesce((new.raw_user_meta_data ->> 'birth_date'), (new.raw_user_meta_data ->> 'fecha_nacimiento'))::timestamptz)::date
+      else null
+    end,
     (new.raw_user_meta_data ->> 'bio'),
     (new.raw_user_meta_data ->> 'profile_image_url'),
     new.email_confirmed_at is not null
@@ -161,8 +168,8 @@ begin
   return new;
 exception
   when others then
-    -- Log del error pero no fallar el registro de autenticación
-    raise warning 'Error al crear usuario en tabla usuarios: %', sqlerrm;
+    -- Log the error but do not fail auth insertion
+    raise warning 'Error creating row in table users: %', sqlerrm;
     return new;
 end;
 $$ language plpgsql security definer;
@@ -175,7 +182,7 @@ $$ language plpgsql security definer;
 create or replace function public.debug_check_user_exists(user_auth_id uuid)
 returns boolean as $$
 begin
-  return exists (select 1 from public.usuarios where auth_user_id = user_auth_id);
+  return exists (select 1 from public.users where auth_user_id = user_auth_id);
 end;
 $$ language plpgsql security definer;
 
@@ -191,17 +198,17 @@ declare
   new_user_id uuid;
 begin
   -- Verificar si el usuario ya existe
-  if exists (select 1 from public.usuarios where auth_user_id = user_auth_id) then
+  if exists (select 1 from public.users where auth_user_id = user_auth_id) then
     raise exception 'Usuario ya existe con auth_user_id: %', user_auth_id;
   end if;
   
   -- Crear el usuario
-  insert into public.usuarios (
+  insert into public.users (
     auth_user_id,
     email,
-    nombre,
-    apellido,
-    email_confirmado
+    first_name,
+    last_name,
+    email_confirmed
   )
   values (
     user_auth_id,
@@ -233,13 +240,13 @@ begin
   select 
     u.id,
     u.email,
-    u.nombre,
-    u.apellido,
+    u.first_name as nombre,
+    u.last_name as apellido,
     u.auth_user_id,
-    u.email_confirmado,
+    u.email_confirmed as email_confirmado,
     u.created_at,
     u.updated_at
-  from public.usuarios u
+  from public.users u
   where u.auth_user_id = user_auth_id;
 end;
 $$ language plpgsql security definer;
@@ -260,12 +267,12 @@ begin
   select 
     u.id,
     u.email,
-    u.nombre,
-    u.apellido,
+    u.first_name as nombre,
+    u.last_name as apellido,
     u.auth_user_id,
-    u.email_confirmado,
+    u.email_confirmed as email_confirmado,
     u.created_at
-  from public.usuarios u
+  from public.users u
   order by u.created_at desc
   limit 50;
 end;
@@ -330,10 +337,10 @@ declare
   updated_rows integer;
 begin
   -- Actualizar en la tabla usuarios
-  update public.usuarios 
+update public.users 
   set 
-    email_confirmado = confirmed,
-    fecha_confirmacion_email = case when confirmed then now() else null end,
+    email_confirmed = confirmed,
+    email_confirmed_at = case when confirmed then now() else null end,
     updated_at = now()
   where auth_user_id = user_auth_id;
   
@@ -373,7 +380,7 @@ declare
 begin
   -- Buscar en tabla usuarios
   select * into user_record 
-  from public.usuarios 
+  from public.users 
   where email = user_email;
   
   -- Buscar en auth.users
@@ -394,9 +401,9 @@ begin
     'email', user_email,
     'auth_confirmed', auth_record.email_confirmed_at is not null,
     'auth_confirmed_at', auth_record.email_confirmed_at,
-    'usuarios_confirmed', coalesce(user_record.email_confirmado, false),
-    'usuarios_confirmed_at', user_record.fecha_confirmacion_email,
-    'user_exists_in_usuarios', user_record.id is not null,
+    'usuarios_confirmed', coalesce(user_record.email_confirmed, false),
+    'usuarios_confirmed_at', user_record.email_confirmed_at,
+    'user_exists_in_users', user_record.id is not null,
     'auth_user_id', auth_record.id
   );
   
@@ -432,11 +439,11 @@ grant execute on function public.check_email_confirmation_status(varchar) to aut
 -- email pero sin auth_user_id asignado (o asignado incorrectamente),
 -- permitiendo que el usuario autenticado reclame su propia fila.
 -- Usa SECURITY DEFINER para operar fuera de RLS, pero con validaciones.
-create or replace function public.link_existing_usuario_to_auth_user(user_email varchar)
+create or replace function public.link_existing_user_to_auth_user(user_email varchar)
 returns boolean as $$
 begin
   -- Solo vincular si la fila existe y NO tiene auth_user_id o coincide
-  update public.usuarios
+  update public.users
      set auth_user_id = auth.uid(), updated_at = now()
    where email = user_email
      and (auth_user_id is null or auth_user_id = auth.uid());
@@ -444,17 +451,16 @@ begin
   return found; -- true si se actualizó alguna fila
 end;
 $$ language plpgsql security definer;
-
-grant execute on function public.link_existing_usuario_to_auth_user(varchar) to authenticated;
+grant execute on function public.link_existing_user_to_auth_user(varchar) to authenticated;
 
 -- =====================================================
 -- ACTIVACIÓN DE TRIGGERS
 -- =====================================================
 
-drop trigger if exists on_auth_user_created_usuarios on auth.users;
-create trigger on_auth_user_created_usuarios
+drop trigger if exists on_auth_user_created_users on auth.users;
+create trigger on_auth_user_created_users
   after insert on auth.users
-  for each row execute function public.handle_new_user_usuarios();
+  for each row execute function public.handle_new_user_users();
 
 -- =====================================================
 -- TABLA DE INVENTARIO
@@ -467,7 +473,7 @@ create trigger on_auth_user_created_usuarios
 
 create table if not exists public.inventory_items (
   id varchar(255) primary key,
-  user_id uuid not null references public.usuarios(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
   nombre varchar(255) not null,
   categoria varchar(100) not null,
   descripcion text,
@@ -499,7 +505,7 @@ create table if not exists public.inventory_items (
 
 create table if not exists public.farm_locations (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid not null references public.usuarios(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
   name varchar(255) not null,
   latitude numeric not null,
   longitude numeric not null,
@@ -525,7 +531,7 @@ drop policy if exists "Farm locations deletable by owner" on public.farm_locatio
 create policy "Farm locations viewable by owner" on public.farm_locations
   for select using (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -533,7 +539,7 @@ create policy "Farm locations viewable by owner" on public.farm_locations
 create policy "Farm locations insertable by owner" on public.farm_locations
   for insert with check (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -541,7 +547,7 @@ create policy "Farm locations insertable by owner" on public.farm_locations
 create policy "Farm locations updatable by owner" on public.farm_locations
   for update using (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -549,7 +555,7 @@ create policy "Farm locations updatable by owner" on public.farm_locations
 create policy "Farm locations deletable by owner" on public.farm_locations
   for delete using (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -570,7 +576,7 @@ drop policy if exists "Inventory items deletable by owner" on public.inventory_i
 create policy "Inventory items viewable by owner" on public.inventory_items
   for select using (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -578,7 +584,7 @@ create policy "Inventory items viewable by owner" on public.inventory_items
 create policy "Inventory items insertable by owner" on public.inventory_items
   for insert with check (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -586,7 +592,7 @@ create policy "Inventory items insertable by owner" on public.inventory_items
 create policy "Inventory items updatable by owner" on public.inventory_items
   for update using (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -594,7 +600,7 @@ create policy "Inventory items updatable by owner" on public.inventory_items
 create policy "Inventory items deletable by owner" on public.inventory_items
   for delete using (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -629,7 +635,7 @@ create or replace function public.get_user_id_from_auth()
 returns uuid as $$
 begin
   return (
-    select id from public.usuarios where auth_user_id = auth.uid() limit 1
+    select id from public.users where auth_user_id = auth.uid() limit 1
   );
 end;
 $$ language plpgsql security definer;
@@ -772,7 +778,7 @@ grant execute on function public.get_expiring_items(integer) to authenticated;
 
 create table if not exists public.app_settings (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid not null references public.usuarios(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
   setting_key varchar(100) not null,
   setting_value text,
   created_at timestamp with time zone default now(),
@@ -797,7 +803,7 @@ drop policy if exists "App settings deletable by owner" on public.app_settings;
 create policy "App settings viewable by owner" on public.app_settings
   for select using (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -805,7 +811,7 @@ create policy "App settings viewable by owner" on public.app_settings
 create policy "App settings insertable by owner" on public.app_settings
   for insert with check (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -813,7 +819,7 @@ create policy "App settings insertable by owner" on public.app_settings
 create policy "App settings updatable by owner" on public.app_settings
   for update using (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -821,7 +827,7 @@ create policy "App settings updatable by owner" on public.app_settings
 create policy "App settings deletable by owner" on public.app_settings
   for delete using (
     user_id in (
-      select id from public.usuarios where auth_user_id = auth.uid()
+      select id from public.users where auth_user_id = auth.uid()
     )
   );
 
@@ -851,12 +857,12 @@ create trigger inventory_items_set_updated_at
 -- ÍNDICES PARA OPTIMIZACIÓN DE RENDIMIENTO
 -- =====================================================
 
--- Índices para tabla usuarios
-create index if not exists idx_usuarios_auth_user_id on public.usuarios(auth_user_id);
-create index if not exists idx_usuarios_email on public.usuarios(email);
-create index if not exists idx_usuarios_activo on public.usuarios(activo);
-create index if not exists idx_usuarios_fecha_registro on public.usuarios(fecha_registro);
-create index if not exists idx_usuarios_activo_fecha on public.usuarios(activo, fecha_registro desc);
+-- Indexes for users table
+create index if not exists idx_users_auth_user_id on public.users(auth_user_id);
+create index if not exists idx_users_email on public.users(email);
+create index if not exists idx_users_active on public.users(active);
+create index if not exists idx_users_registered_at on public.users(registered_at);
+create index if not exists idx_users_active_registered_at on public.users(active, registered_at desc);
 
 -- Índices para tabla farm_locations
 create index if not exists idx_farm_locations_user_id on public.farm_locations(user_id);

@@ -21,9 +21,12 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
   final MapController _mapController = MapController();
   final WeatherService _weatherService = WeatherService();
   final TextEditingController _searchController = TextEditingController();
-  
+
   // Estado del mapa y ubicación
-  LatLng _currentPosition = const LatLng(4.7110, -74.0721); // Bogotá por defecto
+  LatLng _currentPosition = const LatLng(
+    4.7110,
+    -74.0721,
+  ); // Bogotá por defecto
   List<Marker> _markers = [];
   WeatherData? _currentWeatherData;
   bool _isLoadingWeather = false;
@@ -33,7 +36,7 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
   double _currentZoom = 12.0;
   String _mapType = 'standard';
   String? _errorMessage;
-  
+
   // Variables para persistencia
   LatLng? _selectedPosition;
   String? _selectedLocationName;
@@ -42,7 +45,8 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
   // Tipos de mapa disponibles
   final Map<String, String> _mapTypes = {
     'standard': 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    'satellite': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    'satellite':
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     'terrain': 'https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png',
   };
 
@@ -108,7 +112,7 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
         desiredAccuracy: LocationAccuracy.high,
         timeLimit: const Duration(seconds: 10),
       );
-      
+
       setState(() {
         _currentPosition = LatLng(position.latitude, position.longitude);
         _isLoadingLocation = false;
@@ -139,28 +143,31 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
         position.latitude,
         position.longitude,
       );
-      
+
       String locationName = 'Ubicación desconocida';
       if (placemarks.isNotEmpty) {
         final placemark = placemarks.first;
         // Construir el nombre en formato ciudad, departamento
         String city = '';
         String department = '';
-        
+
         // Obtener ciudad (locality, subLocality, o subAdministrativeArea)
         if (placemark.locality != null && placemark.locality!.isNotEmpty) {
           city = placemark.locality!;
-        } else if (placemark.subLocality != null && placemark.subLocality!.isNotEmpty) {
+        } else if (placemark.subLocality != null &&
+            placemark.subLocality!.isNotEmpty) {
           city = placemark.subLocality!;
-        } else if (placemark.subAdministrativeArea != null && placemark.subAdministrativeArea!.isNotEmpty) {
+        } else if (placemark.subAdministrativeArea != null &&
+            placemark.subAdministrativeArea!.isNotEmpty) {
           city = placemark.subAdministrativeArea!;
         }
-        
+
         // Obtener departamento (administrativeArea)
-        if (placemark.administrativeArea != null && placemark.administrativeArea!.isNotEmpty) {
+        if (placemark.administrativeArea != null &&
+            placemark.administrativeArea!.isNotEmpty) {
           department = placemark.administrativeArea!;
         }
-        
+
         // Construir el nombre final
         if (city.isNotEmpty && department.isNotEmpty) {
           locationName = '$city, $department';
@@ -182,9 +189,12 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
 
       if (weatherData != null) {
         // Guardar datos en el estado global
-        final weatherProvider = Provider.of<WeatherStateProvider>(context, listen: false);
+        final weatherProvider = Provider.of<WeatherStateProvider>(
+          context,
+          listen: false,
+        );
         weatherProvider.updateSelectedWeather(weatherData);
-        
+
         setState(() {
           _currentWeatherData = weatherData;
           _markers = [
@@ -272,16 +282,16 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
       if (locations.isNotEmpty) {
         final location = locations.first;
         final position = LatLng(location.latitude, location.longitude);
-        
+
         // Mover el mapa a la nueva ubicación
         _mapController.move(position, 12);
-        
+
         // Obtener clima para la nueva ubicación
         await _getWeatherForLocation(position);
-        
+
         setState(() => _showSearchBar = false);
         _searchController.clear();
-        
+
         // Mostrar mensaje de éxito
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -296,7 +306,7 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
         setState(() {
           _errorMessage = 'No se encontró la ubicación: $query';
         });
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -310,13 +320,16 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
     } catch (e) {
       LoggerService.error('Error buscando ubicación: $e');
       setState(() {
-        _errorMessage = 'Error buscando ubicación. Verifica tu conexión a internet.';
+        _errorMessage =
+            'Error buscando ubicación. Verifica tu conexión a internet.';
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Error al buscar la ubicación. Verifica tu conexión a internet.'),
+            content: Text(
+              'Error al buscar la ubicación. Verifica tu conexión a internet.',
+            ),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 3),
           ),
@@ -351,7 +364,7 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            
+
             // Weather content
             Expanded(
               child: Padding(
@@ -397,9 +410,9 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Location
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -425,9 +438,9 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Weather details grid
                     Expanded(
                       child: GridView.count(
@@ -473,7 +486,12 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
     );
   }
 
-  Widget _buildWeatherDetailCard(String label, String value, IconData icon, Color color) {
+  Widget _buildWeatherDetailCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -496,10 +514,7 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
           ),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color.withOpacity(0.7),
-            ),
+            style: TextStyle(fontSize: 12, color: color.withOpacity(0.7)),
           ),
         ],
       ),
@@ -510,41 +525,44 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
   void _onMapTapped(TapPosition tapPosition, LatLng position) {
     _selectLocation(position);
   }
-  
+
   /// Seleccionar una ubicación en el mapa
   void _selectLocation(LatLng position) async {
     setState(() {
       _selectedPosition = position;
       _hasSelectedLocation = true;
     });
-    
+
     // Obtener el nombre de la ubicación
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
       );
-      
+
       if (placemarks.isNotEmpty) {
         final placemark = placemarks.first;
         // Construir el nombre en formato ciudad, departamento
         String city = '';
         String department = '';
-        
+
         // Obtener ciudad (locality, subLocality, o subAdministrativeArea)
         if (placemark.locality != null && placemark.locality!.isNotEmpty) {
           city = placemark.locality!;
-        } else if (placemark.subLocality != null && placemark.subLocality!.isNotEmpty) {
+        } else if (placemark.subLocality != null &&
+            placemark.subLocality!.isNotEmpty) {
           city = placemark.subLocality!;
-        } else if (placemark.subAdministrativeArea != null && placemark.subAdministrativeArea!.isNotEmpty) {
+        } else if (placemark.subAdministrativeArea != null &&
+            placemark.subAdministrativeArea!.isNotEmpty) {
           city = placemark.subAdministrativeArea!;
         }
-        
+
         // Obtener departamento (administrativeArea)
-        if (placemark.administrativeArea != null && placemark.administrativeArea!.isNotEmpty) {
+        if (placemark.administrativeArea != null &&
+            placemark.administrativeArea!.isNotEmpty) {
           department = placemark.administrativeArea!;
         }
-        
+
         // Construir el nombre final
         if (city.isNotEmpty && department.isNotEmpty) {
           _selectedLocationName = '$city, $department';
@@ -556,12 +574,14 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
           _selectedLocationName = 'Ubicación seleccionada';
         }
       } else {
-        _selectedLocationName = 'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}';
+        _selectedLocationName =
+            'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}';
       }
     } catch (e) {
-      _selectedLocationName = 'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}';
+      _selectedLocationName =
+          'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}';
     }
-    
+
     // Obtener datos del clima para la ubicación seleccionada
     _getWeatherForLocation(position);
   }
@@ -583,12 +603,15 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
       // Si aún tenemos la ubicación por defecto, obtener la ubicación real
       await _getCurrentLocation();
     }
-    
+
     if (_currentPosition != const LatLng(4.7110, -74.0721)) {
       setState(() {
         _showMyLocationMarker = true;
       });
-      _mapController.move(_currentPosition, 15.0); // Zoom más cercano para ubicación actual
+      _mapController.move(
+        _currentPosition,
+        15.0,
+      ); // Zoom más cercano para ubicación actual
       await _getWeatherForLocation(_currentPosition);
     } else {
       setState(() {
@@ -618,7 +641,10 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
       await prefs.setBool('has_selected_location', true);
 
       // Actualizar el estado global del clima
-      final weatherProvider = Provider.of<WeatherStateProvider>(context, listen: false);
+      final weatherProvider = Provider.of<WeatherStateProvider>(
+        context,
+        listen: false,
+      );
       if (_currentWeatherData != null) {
         weatherProvider.updateSelectedWeather(_currentWeatherData!);
       }
@@ -667,10 +693,7 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
       appBar: AppBar(
         title: const Text(
           'Clima en Mapa',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontFamily: 'NotoSans',
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, fontFamily: 'NotoSans'),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
@@ -837,8 +860,11 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
                 ],
               ),
               child: Text(
-                _mapType == 'standard' ? 'Estándar' : 
-                _mapType == 'satellite' ? 'Satélite' : 'Terreno',
+                _mapType == 'standard'
+                    ? 'Estándar'
+                    : _mapType == 'satellite'
+                    ? 'Satélite'
+                    : 'Terreno',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -859,10 +885,7 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
                     SizedBox(height: 16),
                     Text(
                       'Obteniendo ubicación...',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ],
                 ),
@@ -964,7 +987,9 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: _getWeatherColor(_currentWeatherData!.temperature),
+                            color: _getWeatherColor(
+                              _currentWeatherData!.temperature,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -998,7 +1023,8 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.info_outline),
-                              onPressed: () => _showWeatherDetails(_currentWeatherData!),
+                              onPressed: () =>
+                                  _showWeatherDetails(_currentWeatherData!),
                               tooltip: 'Ver detalles',
                             ),
                             Text(
@@ -1015,7 +1041,11 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        const Icon(Icons.location_on, size: 16, color: Colors.blue),
+                        const Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: Colors.blue,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -1050,7 +1080,10 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
             ),
 
           // Instrucciones de uso
-          if (_currentWeatherData == null && !_isLoadingWeather && !_isLoadingLocation && _errorMessage == null)
+          if (_currentWeatherData == null &&
+              !_isLoadingWeather &&
+              !_isLoadingLocation &&
+              _errorMessage == null)
             Positioned(
               bottom: 100,
               left: 16,
@@ -1064,11 +1097,7 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.touch_app,
-                      color: Colors.white,
-                      size: 32,
-                    ),
+                    const Icon(Icons.touch_app, color: Colors.white, size: 32),
                     const SizedBox(height: 8),
                     const Text(
                       'Toca cualquier lugar en el mapa para ver el clima',
@@ -1082,10 +1111,7 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
                     const SizedBox(height: 4),
                     const Text(
                       'Usa los controles de zoom y busca ubicaciones',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -1099,7 +1125,7 @@ class _MapWeatherScreenState extends State<MapWeatherScreen> {
               bottom: 20,
               left: 16,
               right: 16,
-              child: Container(
+              child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: _confirmLocation,
