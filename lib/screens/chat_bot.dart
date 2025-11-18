@@ -25,6 +25,8 @@ class _ChatBotState extends State<ChatBot> {
   final Map<String, List<String>> _questionVersions = {}; // Para almacenar versiones de preguntas editadas
   final Map<String, int> _currentQuestionVersionIndex = {}; // Índice actual de la versión mostrada
   final Map<String, Map<int, String>> _questionResponseMap = {}; // Mapea cada versión de pregunta con su respuesta
+  final List<_Conversation> _conversations = [];
+  String? _currentConversationId;
 
   _ChatBotState() {
     LoggerService.info('🏗️ ChatBot widget creado - Constructor llamado');
@@ -349,7 +351,7 @@ class _ChatBotState extends State<ChatBot> {
       });
     }
   }
-
+  
   // Método para navegar entre versiones de preguntas
   void _navigateQuestionVersion(String messageId, bool isNext) {
     if (!_questionVersions.containsKey(messageId)) return;
@@ -388,22 +390,139 @@ class _ChatBotState extends State<ChatBot> {
     });
   }
 
+  _Conversation get _currentConv =>
+      _conversations.firstWhere((c) => c.id == _currentConversationId, orElse: () => _Conversation(id: '', title: '', messages: []));
+
+  void _syncToConversation() {
+    if (_currentConversationId == null) return;
+    final msgs = _currentConv.messages;
+    msgs
+      ..clear()
+      ..addAll(_messages);
+  }
+
+  void _createConversation() {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final title = 'Conversación ${_conversations.length + 1}';
+    final welcome = _ChatMessage.withId(
+      text:
+          '¡Hola! Soy tu orientador agrícola. Cuéntame tu consulta '
+          'sobre cultivos, suelos, riego, plagas, nutrición o comercialización. '
+          'Indica cultivo, etapa, suelo, clima/localidad y síntomas. '
+          'Daré recomendaciones generales y prácticas sostenibles; esto no '
+          'reemplaza asesoría técnica profesional local.',
+      isUser: false,
+    );
+    final conv = _Conversation(id: id, title: title, messages: [welcome]);
+    setState(() {
+      _conversations.add(conv);
+      _currentConversationId = id;
+      _messages
+        ..clear()
+        ..addAll(conv.messages);
+    });
+  }
+
+  void _switchConversation(String id) {
+    if (_currentConversationId == id) return;
+    setState(() {
+      _currentConversationId = id;
+      _messages
+        ..clear()
+        ..addAll(_currentConv.messages);
+    });
+    _rebuildChatSession();
+  }
+
+  Future<void> _showConversationPicker() async {
+    if (_conversations.isEmpty) return;
+    final id = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Seleccionar conversación'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: _conversations.length,
+            itemBuilder: (context, index) {
+              final c = _conversations[index];
+              final selected = c.id == _currentConversationId;
+              return ListTile(
+                title: Text(c.title),
+                leading: Icon(
+                  selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                ),
+                onTap: () => Navigator.of(ctx).pop(c.id),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+        ],
+      ),
+    );
+    if (id != null) _switchConversation(id);
+  }
+
+  Future<void> _renameCurrentConversation() async {
+    if (_currentConversationId == null) return;
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController(text: _currentConv.title);
+        return AlertDialog(
+          title: const Text('Renombrar conversación'),
+          content: TextField(controller: ctrl),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (name != null && name.isNotEmpty) {
+      setState(() {
+        _currentConv.title = name;
+      });
+    }
+  }
+
+  void _deleteCurrentConversation() {
+    if (_currentConversationId == null) return;
+    final idx = _conversations.indexWhere((c) => c.id == _currentConversationId);
+    if (idx < 0) return;
+    setState(() {
+      _conversations.removeAt(idx);
+      if (_conversations.isEmpty) {
+        _currentConversationId = null;
+        _messages.clear();
+        _createConversation();
+      } else {
+        final newIdx = idx > 0 ? idx - 1 : 0;
+        _currentConversationId = _conversations[newIdx].id;
+        _messages
+          ..clear()
+          ..addAll(_currentConv.messages);
+      }
+    });
+    _rebuildChatSession();
+  }
+
   @override
   void initState() {
     super.initState();
-
-    // Agregar mensaje de bienvenida inmediatamente
-    _messages.add(
-      _ChatMessage.withId(
-        text:
-            '¡Hola! Soy tu orientador agrícola. Cuéntame tu consulta '
-            'sobre cultivos, suelos, riego, plagas, nutrición o comercialización. '
-            'Indica cultivo, etapa, suelo, clima/localidad y síntomas. '
-            'Daré recomendaciones generales y prácticas sostenibles; esto no '
-            'reemplaza asesoría técnica profesional local.',
-        isUser: false,
-      ),
-    );
+    _createConversation();
 
     // Inicializar el chat de forma asíncrona
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -526,6 +645,7 @@ class _ChatBotState extends State<ChatBot> {
       _textController.clear();
       _isLoading = isAgri;
     });
+    _syncToConversation();
     _scrollToBottom();
 
     if (!isAgri) {
@@ -547,6 +667,7 @@ class _ChatBotState extends State<ChatBot> {
           _messages.add(botMessage);
           _isLoading = false;
         });
+        _syncToConversation();
         _scrollToBottom();
       }
       return;
@@ -589,6 +710,7 @@ class _ChatBotState extends State<ChatBot> {
         setState(() {
           _messages.add(botMessage);
         });
+        _syncToConversation();
         _scrollToBottom();
         LoggerService.info('✅ Respuesta agregada a la UI');
       }
@@ -643,6 +765,7 @@ class _ChatBotState extends State<ChatBot> {
               setState(() {
                 _messages.add(botMessage);
               });
+              _syncToConversation();
               _scrollToBottom();
             }
             return;
@@ -661,6 +784,7 @@ class _ChatBotState extends State<ChatBot> {
             ),
           );
         });
+        _syncToConversation();
         _scrollToBottom();
       }
     } finally {
@@ -706,6 +830,7 @@ class _ChatBotState extends State<ChatBot> {
       // Remover mensajes desde la última pregunta del usuario
       _messages.removeRange(lastUserMessageIndex, _messages.length);
     });
+    _syncToConversation();
 
     _rebuildChatSession();
   }
@@ -761,7 +886,7 @@ class _ChatBotState extends State<ChatBot> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: const Text('Chat Agrícola'),
+        title: Text('Chat Agrícola - ${_conversations.isEmpty ? '' : _currentConv.title}'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
@@ -791,9 +916,30 @@ class _ChatBotState extends State<ChatBot> {
                 setState(() {
                   _messages.clear();
                 });
+                _syncToConversation();
                 _rebuildChatSession();
               }
             },
+          ),
+          IconButton(
+            tooltip: 'Nueva conversación',
+            icon: const Icon(Icons.add),
+            onPressed: _createConversation,
+          ),
+          IconButton(
+            tooltip: 'Cambiar conversación',
+            icon: const Icon(Icons.folder_open),
+            onPressed: _showConversationPicker,
+          ),
+          IconButton(
+            tooltip: 'Renombrar conversación',
+            icon: const Icon(Icons.edit_note),
+            onPressed: _renameCurrentConversation,
+          ),
+          IconButton(
+            tooltip: 'Eliminar conversación',
+            icon: const Icon(Icons.delete_forever),
+            onPressed: _deleteCurrentConversation,
           ),
         ],
       ),
@@ -1126,6 +1272,7 @@ class _ChatBotState extends State<ChatBot> {
                         setState(() {
                           _messages.removeAt(index);
                         });
+                        _syncToConversation();
                         _rebuildChatSession();
                       },
                       child: GestureDetector(
@@ -1276,6 +1423,14 @@ class _ChatMessage {
       timestamp: timestamp ?? this.timestamp,
     );
   }
+}
+
+class _Conversation {
+  String id;
+  String title;
+  final List<_ChatMessage> messages;
+  _Conversation({required this.id, required this.title, List<_ChatMessage>? messages})
+      : messages = messages ?? [];
 }
 
 class _TypingBubble extends StatefulWidget {
