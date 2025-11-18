@@ -342,64 +342,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Configuraciones
-                  _buildSectionTitle('Configuraciones'),
-                  const SizedBox(height: 12),
-                  _buildSettingsCard([
-                    _buildSettingsTile(
-                      Icons.notifications,
-                      'Notificaciones',
-                      'Gestionar alertas y recordatorios',
-                      () => Navigator.pushNamed(
-                        context,
-                        '/notifications-settings',
-                      ),
-                    ),
-                    _buildSettingsTile(
-                      Icons.palette,
-                      'Tema',
-                      'Personalizar apariencia',
-                      () => Navigator.pushNamed(context, '/theme-settings'),
-                    ),
-                    _buildSettingsTile(
-                      Icons.language,
-                      'Idioma',
-                      'Cambiar idioma de la aplicación',
-                      () => Navigator.pushNamed(context, '/language-settings'),
-                    ),
-                    _buildSettingsTile(
-                      Icons.security,
-                      'Privacidad y Seguridad',
-                      'Configurar contraseña y privacidad',
-                      () => Navigator.pushNamed(context, '/security-settings'),
-                    ),
-                  ]),
-
-                  const SizedBox(height: 24),
-
-                  // Estadísticas
-                  _buildSectionTitle('Estadísticas'),
-                  const SizedBox(height: 12),
-                  _buildStatsCard(),
-
-                  const SizedBox(height: 24),
+                  
 
                   // Acciones
                   _buildSectionTitle('Acciones'),
                   const SizedBox(height: 12),
                   _buildActionsCard([
-                    _buildActionTile(
-                      Icons.help_outline,
-                      'Ayuda y Soporte',
-                      Colors.blue,
-                      () => Navigator.pushNamed(context, '/help'),
-                    ),
-                    _buildActionTile(
-                      Icons.info_outline,
-                      'Acerca de',
-                      Colors.green,
-                      () => Navigator.pushNamed(context, '/about'),
-                    ),
                     _buildActionTile(
                       Icons.logout,
                       'Cerrar Sesión',

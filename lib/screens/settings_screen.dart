@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/user_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -28,7 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text(
-          'Configuraciones',
+          'Ajustes',
           style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
@@ -194,8 +195,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
               _buildSettingsCard([
                 _buildActionTile(
-                  'Acerca de AgroTrack',
-                  'Versión 1.0.0',
+                  'Acerca de',
+                  'Información de la aplicación',
                   Icons.info,
                   () => _showAboutDialog(),
                 ),
@@ -212,10 +213,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   () => _showPrivacyPolicy(),
                 ),
                 _buildActionTile(
-                  'Contactar Soporte',
+                  'Ayuda y Soporte',
                   'Obtener ayuda técnica',
                   Icons.support_agent,
                   () => _contactSupport(),
+                ),
+                _buildActionTile(
+                  'Cerrar Sesión',
+                  'Salir de tu cuenta',
+                  Icons.logout,
+                  () => _showLogoutDialog(),
                 ),
               ]),
 
@@ -562,6 +569,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _contactSupport() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Contacto con soporte próximamente')),
+    );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Cerrar Sesión'),
+          content: const Text('¿Estás seguro de que quieres cerrar sesión?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
+                navigator.pop();
+                try {
+                  await UserService.signOut();
+                  if (mounted) {
+                    navigator.pushNamedAndRemoveUntil('/', (route) => false);
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Error al cerrar sesión: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text(
+                'Cerrar Sesión',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

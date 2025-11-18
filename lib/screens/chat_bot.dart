@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../services/logger_service.dart';
+import 'dart:math';
 
 class ChatBot extends StatefulWidget {
   const ChatBot({super.key});
@@ -20,29 +21,23 @@ class _ChatBotState extends State<ChatBot> {
   ChatSession? _chat;
   String? _error;
   String? _editingMessageId;
-  final Map<String, List<String>> _messageVariants =
-      {}; // Para almacenar diferentes respuestas
-  final Map<String, List<String>> _questionVersions =
-      {}; // Para almacenar versiones de preguntas editadas
-  final Map<String, int> _currentQuestionVersionIndex =
-      {}; // Índice actual de la versión mostrada
-  final Map<String, Map<int, String>> _questionResponseMap =
-      {}; // Mapea cada versión de pregunta con su respuesta
+  final Map<String, List<String>> _messageVariants = {}; // Para almacenar diferentes respuestas
+  final Map<String, List<String>> _questionVersions = {}; // Para almacenar versiones de preguntas editadas
+  final Map<String, int> _currentQuestionVersionIndex = {}; // Índice actual de la versión mostrada
+  final Map<String, Map<int, String>> _questionResponseMap = {}; // Mapea cada versión de pregunta con su respuesta
 
   _ChatBotState() {
     LoggerService.info('🏗️ ChatBot widget creado - Constructor llamado');
   }
   static const String _systemPrompt =
       'Eres un orientador agrícola para campesinos. Respondes en español '
-      'con empatía, claridad y enfoque práctico. Ofreces información y '
-      'recomendaciones generales sobre cultivos, suelos, riego, plagas, '
-      'nutrición, cosecha y comercialización, sin reemplazar asesoría '
-      'profesional. Pide siempre detalles: cultivo, etapa fenológica, '
-      'tipo de suelo, clima/localidad, síntomas o plaga, manejo previo y '
-      'recursos disponibles. Indica señales de alarma (plagas agresivas, '
-      'deficiencias severas, riesgos de intoxicación) y sugiere acudir a '
-      'técnicos locales cuando corresponda. Evita recetas peligrosas y '
-      'fomenta prácticas sostenibles.';
+      'con empatía, claridad y enfoque práctico. Tu alcance incluye: cultivos, '
+      'suelos, riego, plagas/enfermedades, nutrición de plantas, cosecha y postcosecha, '
+      'comercialización, maquinaria agrícola, prácticas sostenibles y clima aplicado a la agricultura. '
+      'Ignora cualquier consulta que no esté relacionada con agricultura y responde exactamente: '
+      '"Lo siento, solo puedo responder preguntas relacionadas con la agricultura". '
+      'Siempre pide detalles clave (cultivo, etapa fenológica, tipo de suelo, clima/localidad, síntomas, manejo previo, recursos disponibles) '
+      'y advierte sobre riesgos cuando corresponda. Evita recetas peligrosas y fomenta prácticas sostenibles.';
   late String _modelName;
   bool _didRetryModel = false;
   final List<String> _modelCandidates = [
@@ -109,6 +104,169 @@ class _ChatBotState extends State<ChatBot> {
         curve: Curves.easeOut,
       );
     });
+  }
+
+  String _normalize(String s) {
+    var t = s.toLowerCase();
+    t = t.replaceAll('á', 'a').replaceAll('à', 'a').replaceAll('ä', 'a').replaceAll('â', 'a');
+    t = t.replaceAll('é', 'e').replaceAll('è', 'e').replaceAll('ë', 'e').replaceAll('ê', 'e');
+    t = t.replaceAll('í', 'i').replaceAll('ì', 'i').replaceAll('ï', 'i').replaceAll('î', 'i');
+    t = t.replaceAll('ó', 'o').replaceAll('ò', 'o').replaceAll('ö', 'o').replaceAll('ô', 'o');
+    t = t.replaceAll('ú', 'u').replaceAll('ù', 'u').replaceAll('ü', 'u').replaceAll('û', 'u');
+    t = t.replaceAll('ñ', 'n');
+    return t;
+  }
+
+  List<String> _detectNonAgriCategories(String text) {
+    final t = _normalize(text);
+    final cats = <String>[];
+    final deportes = [
+      'deporte', 'futbol', 'football', 'basket', 'baloncesto', 'tenis', 'golf', 'boxeo',
+      'liga', 'partido', 'campeonato'
+    ];
+    final sexual = [
+      'sexo', 'sexual', 'porn', 'pornografia', 'erotico', 'erotica'
+    ];
+    final tecnologia = [
+      'tecnolog', 'software', 'program', 'codigo', 'computer', 'computador', 'pc',
+      'android', 'iphone', 'celular', 'movil', 'aplicacion', 'app', 'internet', 'web',
+      'redes', 'videojuego', 'juego', 'gaming', 'ai'
+    ];
+    if (deportes.any((w) => t.contains(w))) cats.add('deportes');
+    if (sexual.any((w) => t.contains(w))) cats.add('temas sexuales');
+    if (tecnologia.any((w) => t.contains(w))) cats.add('tecnología');
+    return cats;
+  }
+
+  bool _isAgriculturalTopic(String text) {
+    final t = _normalize(text);
+    final keywords = <String>[
+      'agro',
+      'agric',
+      'farm',
+      'crop',
+      'soil',
+      'irrigation',
+      'fertiliz',
+      'plague',
+      'pest',
+      'harvest',
+      'seed',
+      'variety',
+      'yield',
+      'greenhouse',
+      'organic',
+      'compost',
+      'mulch',
+      'grafting',
+      'pruning',
+      'disease',
+      'fungi',
+      'insect',
+      'weed',
+      'livestock',
+      'pasture',
+      'forage',
+      'tractor',
+      'machinery',
+      'sensor',
+      'field',
+      'finca',
+      'cultivo',
+      'suelo',
+      'riego',
+      'fertilizante',
+      'plaga',
+      'cosecha',
+      'semilla',
+      'variedad',
+      'rendimiento',
+      'invernadero',
+      'organico',
+      'compostaje',
+      'injerto',
+      'poda',
+      'enfermedad',
+      'hongo',
+      'insecto',
+      'maleza',
+      'ganado',
+      'pastura',
+      'forraje',
+      'tractor',
+      'maquinaria',
+      'sensor',
+      'parcela',
+      'abono',
+      'comercializacion',
+      'mercado',
+      'precio',
+      'transporte',
+      'sostenible',
+      'rotacion',
+      'conservacion',
+      'clima',
+      'meteorologia',
+      'sequia',
+      'inundacion',
+      'helada',
+      'politica',
+      'subsidio',
+      'regulacion',
+      'apoyo',
+    ];
+    final crops = <String>[
+      'cafe',
+      'cacao',
+      'banano',
+      'platano',
+      'maiz',
+      'arroz',
+      'yuca',
+      'frijol',
+      'trigo',
+      'soya',
+      'soja',
+      'papa',
+      'patata',
+      'tomate',
+      'cebolla',
+      'pimiento',
+      'pepino',
+      'fresa',
+      'uva',
+      'mango',
+      'pina',
+      'limon',
+      'lima',
+      'naranja',
+      'mandarina',
+      'aguacate',
+      'palta',
+      'cana',
+      'algodon',
+      'sorgo',
+      'mani',
+      'ajonjoli',
+      'quinua',
+      'quinoa',
+      'hortalizas',
+      'citricos',
+      'bananera',
+      'cafetal',
+      'cacaotal',
+    ];
+    for (final k in [...keywords, ...crops]) {
+      if (t.contains(k)) return true;
+    }
+    final basics = RegExp(r'^\s*(que|qué)\s+es\s+');
+    if (basics.hasMatch(t)) {
+      final rest = t.replaceFirst(basics, '').trim();
+      for (final k in [...keywords, ...crops]) {
+        if (rest.contains(k)) return true;
+      }
+    }
+    return false;
   }
 
   void _initChatWithAnyModel(String apiKey) {
@@ -350,7 +508,7 @@ class _ChatBotState extends State<ChatBot> {
       return;
     }
 
-    LoggerService.info('📨 Agregando mensaje del usuario y iniciando carga...');
+    LoggerService.info('📨 Agregando mensaje del usuario...');
     final userMessage = _ChatMessage.withId(text: text, isUser: true);
 
     // Si estamos editando, agregar la nueva versión a las versiones de pregunta
@@ -362,12 +520,37 @@ class _ChatBotState extends State<ChatBot> {
       }
     }
 
+    final isAgri = _isAgriculturalTopic(text);
     setState(() {
       _messages.add(userMessage);
       _textController.clear();
-      _isLoading = true;
+      _isLoading = isAgri;
     });
     _scrollToBottom();
+
+    if (!isAgri) {
+      final cats = _detectNonAgriCategories(text);
+      final reply = cats.isNotEmpty
+          ? 'Lo siento, este chat está diseñado para temas agrícolas. No responde consultas de: ${cats.join(', ')}. Por favor reformula tu pregunta sobre cultivos, suelos, riego, plagas, nutrición o cosecha.'
+          : 'Lo siento, solo puedo responder preguntas relacionadas con la agricultura. Por favor reformula tu consulta sobre cultivos, suelos, riego, plagas, nutrición o cosecha.';
+      if (mounted) {
+        final botMessage = _ChatMessage.withId(text: reply, isUser: false);
+        if (_editingMessageId != null) {
+          if (!_questionResponseMap.containsKey(_editingMessageId)) {
+            _questionResponseMap[_editingMessageId!] = {};
+          }
+          final currentVersionIndex = _currentQuestionVersionIndex[_editingMessageId] ?? 0;
+          _questionResponseMap[_editingMessageId!]![currentVersionIndex] = reply;
+          _editingMessageId = null;
+        }
+        setState(() {
+          _messages.add(botMessage);
+          _isLoading = false;
+        });
+        _scrollToBottom();
+      }
+      return;
+    }
 
     try {
       LoggerService.info('🚀 Enviando mensaje a Gemini...');
@@ -576,6 +759,7 @@ class _ChatBotState extends State<ChatBot> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text('Chat Agrícola'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -648,7 +832,7 @@ class _ChatBotState extends State<ChatBot> {
                     final msg = _messages[index];
                     final isUser = msg.isUser;
                     final bubbleColor = isUser
-                        ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
+                        ? Theme.of(context).primaryColor.withOpacity(0.15)
                         : Colors.grey[100];
                     final borderColor = isUser
                         ? Theme.of(context).primaryColor
@@ -659,220 +843,222 @@ class _ChatBotState extends State<ChatBot> {
                         msg.isUser &&
                         index == _messages.lastIndexWhere((m) => m.isUser);
 
-                    final bubble = Container(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      padding: const EdgeInsets.all(12),
-                      constraints: const BoxConstraints(maxWidth: 600),
-                      decoration: BoxDecoration(
-                        color: bubbleColor,
-                        border: Border.all(color: borderColor ?? Colors.grey),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                    final bubble = ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: min(MediaQuery.of(context).size.width * 0.75, 600),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(child: Text(msg.text)),
-                              // Flechas de navegación para versiones de preguntas editadas
-                              if (msg.isUser &&
-                                  _questionVersions.containsKey(msg.id) &&
-                                  (_questionVersions[msg.id]?.length ?? 0) > 1)
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[200],
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          InkWell(
-                                            onTap: () =>
-                                                _navigateQuestionVersion(
-                                                  msg.id,
-                                                  false,
-                                                ),
-                                            child: const Icon(
-                                              Icons.arrow_back_ios,
-                                              size: 12,
-                                              color: Colors.blue,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '${(_currentQuestionVersionIndex[msg.id] ?? 0) + 1}/${_questionVersions[msg.id]?.length ?? 1}',
-                                            style: const TextStyle(
-                                              fontSize: 10,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          InkWell(
-                                            onTap: () =>
-                                                _navigateQuestionVersion(
-                                                  msg.id,
-                                                  true,
-                                                ),
-                                            child: const Icon(
-                                              Icons.arrow_forward_ios,
-                                              size: 12,
-                                              color: Colors.blue,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: bubbleColor,
+                          border: Border.all(color: borderColor ?? Colors.grey),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    msg.text,
+                                    softWrap: true,
+                                    overflow: TextOverflow.visible,
+                                  ),
                                 ),
-                            ],
-                          ),
-                          if (!msg.isUser &&
-                              _messageVariants.containsKey(msg.id))
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                'Toca para ver ${_messageVariants[msg.id]!.length} variantes',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                  fontStyle: FontStyle.italic,
+                                // Flechas de navegación para versiones de preguntas editadas
+                                if (msg.isUser &&
+                                    _questionVersions.containsKey(msg.id) &&
+                                    (_questionVersions[msg.id]?.length ?? 0) > 1)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[200],
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            InkWell(
+                                              onTap: () =>
+                                                  _navigateQuestionVersion(
+                                                    msg.id,
+                                                    false,
+                                                  ),
+                                              child: const Icon(
+                                                Icons.arrow_back_ios,
+                                                size: 12,
+                                                color: Colors.blue,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '${(_currentQuestionVersionIndex[msg.id] ?? 0) + 1}/${_questionVersions[msg.id]?.length ?? 1}',
+                                              style: const TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            InkWell(
+                                              onTap: () =>
+                                                  _navigateQuestionVersion(
+                                                    msg.id,
+                                                    true,
+                                                  ),
+                                              child: const Icon(
+                                                Icons.arrow_forward_ios,
+                                                size: 12,
+                                                color: Colors.blue,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                            if (!msg.isUser &&
+                                _messageVariants.containsKey(msg.id))
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  'Toca para ver ${_messageVariants[msg.id]!.length} variantes',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
                               ),
-                            ),
-                          // Menú de 3 puntos para la última pregunta del usuario
-                          if (isLastUserMessage)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: PopupMenuButton<String>(
-                                  icon: const Icon(
-                                    Icons.more_vert,
-                                    size: 18,
-                                    color: Colors.grey,
-                                  ),
-                                  tooltip: 'Opciones',
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 32,
-                                    minHeight: 32,
-                                  ),
-                                  onSelected: (String value) {
-                                    switch (value) {
-                                      case 'edit':
-                                        _editLastUserMessage();
-                                        break;
-                                      case 'copy':
-                                        _copyMessage(msg.text);
-                                        break;
-                                      case 'delete':
-                                        // Encontrar el índice del mensaje del usuario
-                                        final userMessageIndex = index;
-                                        final userMessage =
-                                            _messages[userMessageIndex];
+                            // Menú de 3 puntos para la última pregunta del usuario
+                            if (isLastUserMessage)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: PopupMenuButton<String>(
+                                    icon: const Icon(
+                                      Icons.more_vert,
+                                      size: 18,
+                                      color: Colors.grey,
+                                    ),
+                                    tooltip: 'Opciones',
+                                    padding: const EdgeInsets.all(4),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 32,
+                                      minHeight: 32,
+                                    ),
+                                    onSelected: (String value) {
+                                      switch (value) {
+                                        case 'edit':
+                                          _editLastUserMessage();
+                                          break;
+                                        case 'copy':
+                                          _copyMessage(msg.text);
+                                          break;
+                                        case 'delete':
+                                          final userMessageIndex = index;
+                                          final userMessage =
+                                              _messages[userMessageIndex];
 
-                                        setState(() {
-                                          // Eliminar la pregunta del usuario
-                                          _messages.removeAt(userMessageIndex);
-
-                                          // Si hay una respuesta del bot después, también eliminarla
-                                          if (userMessageIndex <
-                                                  _messages.length &&
-                                              !_messages[userMessageIndex]
-                                                  .isUser) {
-                                            _messages.removeAt(
-                                              userMessageIndex,
+                                          setState(() {
+                                            _messages.removeAt(userMessageIndex);
+                                            if (userMessageIndex <
+                                                    _messages.length &&
+                                                !_messages[userMessageIndex]
+                                                    .isUser) {
+                                              _messages.removeAt(
+                                                userMessageIndex,
+                                              );
+                                            }
+                                            _questionVersions.remove(
+                                              userMessage.id,
                                             );
-                                          }
-
-                                          // Limpiar los mapas de versiones y respuestas
-                                          _questionVersions.remove(
-                                            userMessage.id,
-                                          );
-                                          _currentQuestionVersionIndex.remove(
-                                            userMessage.id,
-                                          );
-                                          _questionResponseMap.remove(
-                                            userMessage.id,
-                                          );
-                                          _messageVariants.remove(
-                                            userMessage.id,
-                                          );
-                                        });
-                                        _rebuildChatSession();
-                                        break;
-                                    }
-                                  },
-                                  itemBuilder: (BuildContext context) => [
-                                    const PopupMenuItem<String>(
-                                      value: 'edit',
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.edit,
-                                            size: 16,
-                                            color: Colors.blue,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text('Editar pregunta'),
-                                        ],
+                                            _currentQuestionVersionIndex.remove(
+                                              userMessage.id,
+                                            );
+                                            _questionResponseMap.remove(
+                                              userMessage.id,
+                                            );
+                                            _messageVariants.remove(
+                                              userMessage.id,
+                                            );
+                                          });
+                                          _rebuildChatSession();
+                                          break;
+                                      }
+                                    },
+                                    itemBuilder: (BuildContext context) => [
+                                      const PopupMenuItem<String>(
+                                        value: 'edit',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.edit,
+                                              size: 16,
+                                              color: Colors.blue,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Flexible(child: Text('Editar pregunta')),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    const PopupMenuItem<String>(
-                                      value: 'copy',
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.copy,
-                                            size: 16,
-                                            color: Colors.green,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text('Copiar pregunta'),
-                                        ],
+                                      const PopupMenuItem<String>(
+                                        value: 'copy',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.copy,
+                                              size: 16,
+                                              color: Colors.green,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Flexible(child: Text('Copiar pregunta')),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    const PopupMenuItem<String>(
-                                      value: 'delete',
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.delete,
-                                            size: 16,
-                                            color: Colors.red,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text('Eliminar pregunta'),
-                                        ],
+                                      const PopupMenuItem<String>(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.delete,
+                                              size: 16,
+                                              color: Colors.red,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Flexible(child: Text('Eliminar pregunta')),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
 
                     final avatar = CircleAvatar(
                       radius: 14,
-                      backgroundColor: isUser
-                          ? Colors.blue[100]
-                          : Colors.green[100],
+                      backgroundColor: isUser ? Colors.blue[100] : Colors.green[100],
                       child: Icon(
                         isUser ? Icons.person : Icons.eco,
                         color: isUser ? Colors.blue[700] : Colors.green[700],
@@ -886,13 +1072,21 @@ class _ChatBotState extends State<ChatBot> {
                         horizontal: 8,
                       ),
                       child: Row(
-                        mainAxisAlignment: isUser
-                            ? MainAxisAlignment.end
-                            : MainAxisAlignment.start,
+                        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: isUser
-                            ? [bubble, const SizedBox(width: 8), avatar]
-                            : [avatar, const SizedBox(width: 8), bubble],
+                            // Para mensajes del usuario: ajustar con Flexible y avatar al final
+                            ? [
+                                Flexible(child: bubble),
+                                const SizedBox(width: 8),
+                                avatar
+                              ]
+                            // Para mensajes del asistente: avatar primero y bubble flexible después
+                            : [
+                                avatar,
+                                const SizedBox(width: 8),
+                                Flexible(child: bubble),
+                              ],
                       ),
                     );
 
@@ -936,8 +1130,7 @@ class _ChatBotState extends State<ChatBot> {
                       },
                       child: GestureDetector(
                         onLongPress: () => _copyMessage(msg.text),
-                        onTap:
-                            !msg.isUser && _messageVariants.containsKey(msg.id)
+                        onTap: !msg.isUser && _messageVariants.containsKey(msg.id)
                             ? () => _showMessageVariants(msg.id)
                             : null,
                         child: row,
@@ -947,12 +1140,17 @@ class _ChatBotState extends State<ChatBot> {
                 ),
               ),
               const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+              AnimatedPadding(
+                duration: const Duration(milliseconds: 180),
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
                 ),
-                child: Row(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Row(
                   children: [
                     if (_messages.isNotEmpty && _messages.any((m) => m.isUser))
                       IconButton(
@@ -968,13 +1166,17 @@ class _ChatBotState extends State<ChatBot> {
                           hintText: _editingMessageId != null
                               ? 'Editando pregunta...'
                               : (_error != null
-                                    ? 'Error: $_error'
-                                    : (_chat == null
-                                          ? 'Inicializando chat...'
-                                          : 'Escribe tu consulta...')),
+                                  ? 'Error: $_error'
+                                  : (_chat == null
+                                      ? 'Inicializando chat...'
+                                      : 'Orientador agrícola: escribe tu consulta...')),
                           border: const OutlineInputBorder(),
                           isDense: true,
                           errorText: _error,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           suffixIcon: _editingMessageId != null
                               ? IconButton(
                                   icon: const Icon(Icons.close),
@@ -988,6 +1190,7 @@ class _ChatBotState extends State<ChatBot> {
                                 )
                               : null,
                         ),
+                        style: const TextStyle(fontSize: 15),
                         minLines: 1,
                         maxLines: 5,
                         onSubmitted: (_) => _sendMessage(),
@@ -1028,6 +1231,7 @@ class _ChatBotState extends State<ChatBot> {
                       ),
                     ),
                   ],
+                  ),
                 ),
               ),
             ],

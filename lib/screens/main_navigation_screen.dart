@@ -52,9 +52,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       color: const Color(0xFF9C27B0),
     ),
     NavigationItem(
-      icon: Icons.person_outline,
-      activeIcon: Icons.person,
-      label: 'Perfil',
+      icon: Icons.settings_outlined,
+      activeIcon: Icons.settings,
+      label: 'Ajustes',
       color: const Color(0xFF607D8B),
     ),
   ];
