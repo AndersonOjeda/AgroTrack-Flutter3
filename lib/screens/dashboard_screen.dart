@@ -13,6 +13,7 @@ import '../services/location_service.dart';
 import '../services/weather_service.dart';
 import '../services/weather_state_provider.dart';
 import '../widgets/dashboard_weather_widget.dart';
+import '../widgets/requirement_status_card.dart';
 
 class LocationSuggestion {
   final String display;
@@ -809,6 +810,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               );
                             },
                             child: const DashboardWeatherWidget(),
+                          ),
+                        ),
+                      ),
+
+                      // Estado de requerimientos del dashboard
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: RequirementStatusCard(
+                            title: 'Estado de requerimientos del dashboard',
+                            icon: Icons.dashboard_customize_rounded,
+                            items: const [
+                              RequirementStatusItem(
+                                label: 'RF1 Mostrar vista general del clima del dia',
+                                state: RequirementState.missing,
+                              ),
+                              RequirementStatusItem(
+                                label: 'RF2 Accesos rapidos a Chatbot, Inventario, Finanzas, Tareas',
+                                state: RequirementState.completed,
+                              ),
+                              RequirementStatusItem(
+                                label: 'RF3 Mostrar alertas importantes',
+                                state: RequirementState.missing,
+                              ),
+                              RequirementStatusItem(
+                                label: 'RF4 Resumen rapido de finanzas',
+                                state: RequirementState.partial,
+                                note: 'Pendiente de datos en vivo',
+                              ),
+                              RequirementStatusItem(
+                                label: 'RF5 Resumen de tareas del dia',
+                                state: RequirementState.missing,
+                              ),
+                              RequirementStatusItem(
+                                label: 'RNF1 Cargar en menos de 2 segundos',
+                                state: RequirementState.missing,
+                              ),
+                              RequirementStatusItem(
+                                label: 'RNF2 Diseno accesible con botones grandes',
+                                state: RequirementState.completed,
+                              ),
+                              RequirementStatusItem(
+                                label: 'RNF3 Actualizacion automatica via streams de Supabase',
+                                state: RequirementState.missing,
+                              ),
+                            ],
                           ),
                         ),
                       ),

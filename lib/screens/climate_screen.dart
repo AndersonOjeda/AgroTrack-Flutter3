@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/weather_state_provider.dart';
 import '../models/weather_data.dart';
 import 'map_weather_screen.dart';
+import '../widgets/requirement_status_card.dart';
 
 class ClimateScreen extends StatefulWidget {
   final double? latitude;
@@ -267,6 +268,48 @@ class _ClimateScreenState extends State<ClimateScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          RequirementStatusCard(
+            title: 'Requerimientos pantalla Clima',
+            icon: Icons.cloud_queue_rounded,
+            items: const [
+              RequirementStatusItem(
+                label: 'RF1 Mostrar clima actual por ubicacion',
+                state: RequirementState.completed,
+              ),
+              RequirementStatusItem(
+                label: 'RF2 Mostrar pronostico 5-7 dias',
+                state: RequirementState.missing,
+                note: 'Actualmente muestra 1 dia',
+              ),
+              RequirementStatusItem(
+                label: 'RF3 Alertas de clima extremo',
+                state: RequirementState.missing,
+              ),
+              RequirementStatusItem(
+                label: 'RF4 Cambiar ubicacion manualmente',
+                state: RequirementState.completed,
+              ),
+              RequirementStatusItem(
+                label: 'RF5 Recomendaciones agricolas segun clima',
+                state: RequirementState.missing,
+              ),
+              RequirementStatusItem(
+                label: 'RF6 Integrar clima con tareas',
+                state: RequirementState.missing,
+              ),
+              RequirementStatusItem(
+                label: 'RNF1 Funcionar con mala conexion usando cache local',
+                state: RequirementState.missing,
+              ),
+              RequirementStatusItem(
+                label: 'RNF2 Actualizaciones automaticas cada 30 min',
+                state: RequirementState.missing,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
           // Encabezado con ubicación
           Container(
             padding: const EdgeInsets.all(20),

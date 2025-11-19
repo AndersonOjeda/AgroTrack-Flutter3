@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/inventory_item_model.dart';
 import '../services/inventory_service.dart';
 import '../services/inventory_debug_service.dart';
+import '../widgets/requirement_status_card.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -525,6 +526,48 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ),
       body: Column(
         children: [
+          RequirementStatusCard(
+            title: 'Requerimientos pantalla Inventario',
+            icon: Icons.inventory_2_rounded,
+            items: const [
+              RequirementStatusItem(
+                label: 'RF1 Registrar insumos',
+                state: RequirementState.completed,
+              ),
+              RequirementStatusItem(
+                label: 'RF2 Registrar productos cosechados',
+                state: RequirementState.completed,
+              ),
+              RequirementStatusItem(
+                label: 'RF3 Editar, eliminar y buscar articulos',
+                state: RequirementState.completed,
+              ),
+              RequirementStatusItem(
+                label: 'RF4 Alertas de insumos bajos',
+                state: RequirementState.missing,
+              ),
+              RequirementStatusItem(
+                label: 'RF5 Registrar entradas y salidas',
+                state: RequirementState.completed,
+              ),
+              RequirementStatusItem(
+                label: 'RF6 Recomendaciones segun inventario',
+                state: RequirementState.missing,
+              ),
+              RequirementStatusItem(
+                label: 'RNF1 Manejo rapido con coleccion grande',
+                state: RequirementState.missing,
+                note: 'Rendimiento normal',
+              ),
+              RequirementStatusItem(
+                label: 'RNF2 Sincronizacion automatica con Supabase',
+                state: RequirementState.partial,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
           // Barra de búsqueda y filtros
           Container(
             padding: const EdgeInsets.all(16),
