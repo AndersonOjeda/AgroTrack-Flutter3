@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../models/weather_data.dart';
+import '../models/daily_forecast.dart';
 import 'logger_service.dart';
 
 class WeatherService {
@@ -175,7 +176,11 @@ class WeatherService {
   }
 
   /// Obtener pronóstico extendido (opcional para futuras mejoras)
-  Future<List<WeatherData>?> getWeatherForecast(double latitude, double longitude, String locationName) async {
+  Future<List<DailyForecast>?> getWeatherForecast(
+    double latitude,
+    double longitude,
+    String locationName,
+  ) async {
     try {
       final response = await _dio.get(
         _baseUrl,
@@ -190,20 +195,17 @@ class WeatherService {
 
       if (response.statusCode == 200) {
         final daily = response.data['daily'];
-        final List<WeatherData> forecast = [];
+        final List<DailyForecast> forecast = [];
         
         for (int i = 0; i < (daily['time']?.length ?? 0); i++) {
           // Crear datos simplificados para el pronóstico
-          final weatherData = WeatherData(
-            temperature: daily['temperature_2m_max'][i]?.toDouble() ?? 0.0,
-            humidity: 0.0, // No disponible en pronóstico diario
-            windSpeed: 0.0, // No disponible en pronóstico diario
+          final weatherData = DailyForecast(
+            date: DateTime.parse(daily['time'][i]),
+            maxTemperature: daily['temperature_2m_max'][i]?.toDouble() ?? 0.0,
+            minTemperature: daily['temperature_2m_min'][i]?.toDouble() ?? 0.0,
             description: WeatherData.getWeatherDescription(daily['weather_code'][i] ?? 0),
             icon: WeatherData.getWeatherIcon(daily['weather_code'][i] ?? 0),
-            latitude: latitude,
-            longitude: longitude,
-            locationName: locationName,
-            timestamp: DateTime.parse(daily['time'][i]),
+            weatherCode: daily['weather_code'][i] ?? 0,
           );
           forecast.add(weatherData);
         }

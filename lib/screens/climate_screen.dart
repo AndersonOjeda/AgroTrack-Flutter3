@@ -1,7 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../services/weather_state_provider.dart';
+import '../services/weather_service.dart';
+import '../providers/task_provider.dart';
 import '../models/weather_data.dart';
+import '../models/daily_forecast.dart';
 import 'map_weather_screen.dart';
 import '../widgets/requirement_status_card.dart';
 
@@ -22,6 +27,88 @@ class ClimateScreen extends StatefulWidget {
 }
 
 class _ClimateScreenState extends State<ClimateScreen> {
+  final WeatherService _weatherService = WeatherService();
+  Timer? _autoRefreshTimer;
+  WeatherData? _lastForecastLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initializeData());
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initializeData() async {
+    final provider = context.read<WeatherStateProvider>();
+    await provider.loadCachedWeather();
+    if (provider.selectedWeatherData != null) {
+      _maybeLoadForecast(provider.selectedWeatherData!);
+    }
+  }
+
+  void _maybeLoadForecast(WeatherData data) {
+    if (_lastForecastLocation != null &&
+        _lastForecastLocation!.latitude == data.latitude &&
+        _lastForecastLocation!.longitude == data.longitude) {
+      return;
+    }
+    _lastForecastLocation = data;
+    _loadDailyForecast(data);
+    _scheduleAutoRefresh();
+  }
+
+  Future<void> _loadDailyForecast(WeatherData data) async {
+    final provider = context.read<WeatherStateProvider>();
+    provider.setLoadingDaily(true);
+    try {
+      final forecast = await _weatherService.getWeatherForecast(
+        data.latitude,
+        data.longitude,
+        data.locationName,
+      );
+      provider.updateDailyForecast(forecast);
+    } finally {
+      if (provider.isLoadingDaily) {
+        provider.setLoadingDaily(false);
+      }
+    }
+  }
+
+  void _scheduleAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = Timer.periodic(const Duration(minutes: 30), (_) {
+      _refreshWeather();
+    });
+  }
+
+  Future<void> _refreshWeather() async {
+    final provider = context.read<WeatherStateProvider>();
+    final current = provider.selectedWeatherData;
+    if (current == null) return;
+
+    try {
+      provider.setLoading(true);
+      final updated = await _weatherService.getWeatherData(
+        current.latitude,
+        current.longitude,
+        current.locationName,
+      );
+      if (updated != null) {
+        provider.updateWeather(updated, updated.locationName);
+        _lastForecastLocation = updated;
+      }
+      await _loadDailyForecast(updated ?? current);
+    } catch (e) {
+      provider.setError('No se pudo actualizar clima automaticamente');
+    } finally {
+      provider.setLoading(false);
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -63,7 +150,8 @@ class _ClimateScreenState extends State<ClimateScreen> {
       body: SafeArea(
         child: Consumer<WeatherStateProvider>(
           builder: (context, weatherProvider, child) {
-            if (weatherProvider.isLoading) {
+            final hasData = weatherProvider.hasWeatherData;
+            if (weatherProvider.isLoading && !hasData) {
               return const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -76,7 +164,7 @@ class _ClimateScreenState extends State<ClimateScreen> {
               );
             }
 
-            if (weatherProvider.errorMessage != null) {
+            if (weatherProvider.errorMessage != null && !hasData) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -123,9 +211,15 @@ class _ClimateScreenState extends State<ClimateScreen> {
               return _buildNoDataView(context);
             }
 
-            return _buildWeatherView(
-              context,
-              weatherProvider.selectedWeatherData!,
+            _maybeLoadForecast(weatherProvider.selectedWeatherData!);
+
+            return RefreshIndicator(
+              onRefresh: _refreshWeather,
+              child: _buildWeatherView(
+                context,
+                weatherProvider.selectedWeatherData!,
+                weatherProvider,
+              ),
             );
           },
         ),
@@ -136,6 +230,7 @@ class _ClimateScreenState extends State<ClimateScreen> {
   Widget _buildNoDataView(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -262,7 +357,282 @@ class _ClimateScreenState extends State<ClimateScreen> {
     );
   }
 
-  Widget _buildWeatherView(BuildContext context, WeatherData weatherData) {
+  Widget _buildExtremeAlertCard(
+    BuildContext context,
+    WeatherData weatherData,
+    List<DailyForecast>? forecast,
+  ) {
+    final alerts = <String>[];
+    final desc = weatherData.description.toLowerCase();
+    if (weatherData.temperature >= 35) {
+      alerts.add('Calor extremo hoy, evita labores pesadas al mediodA-a');
+    }
+    if (weatherData.temperature <= 5) {
+      alerts.add('Posible helada, protege cultivos sensibles');
+    }
+    if (weatherData.windSpeed >= 25) {
+      alerts.add('Viento fuerte >25 km/h, asegura invernaderos y plA-sticos');
+    }
+    if (desc.contains('lluvia')) {
+      alerts.add('Lluvias actuales, revisa drenajes y evita fumigaciones');
+    }
+    if (forecast != null) {
+      DailyForecast? upcomingRain;
+      for (final day in forecast) {
+        if (day.weatherCode >= 61 && day.weatherCode <= 82) {
+          upcomingRain = day;
+          break;
+        }
+      }
+      if (upcomingRain != null) {
+        alerts.add(
+          'Lluvia prevista el ${DateFormat('EEE d', 'es').format(upcomingRain.date)}, planifica cosechas previas',
+        );
+      }
+    }
+
+    final MaterialColor colorBase = alerts.isEmpty ? Colors.green : Colors.red;
+    final icon = alerts.isEmpty ? Icons.check_circle : Icons.warning_amber_rounded;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: alerts.isEmpty ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorBase.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: colorBase),
+              const SizedBox(width: 8),
+              Text(
+                'Alertas de clima',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorBase.shade700,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (alerts.isEmpty)
+            Text(
+              'Sin eventos extremos detectados.',
+              style: TextStyle(color: Colors.green.shade700),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: alerts
+                  .map(
+                    (a) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        '�?� $a',
+                        style: TextStyle(color: Colors.red.shade700),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyForecast(
+    BuildContext context,
+    WeatherStateProvider provider,
+  ) {
+    if (provider.isLoadingDaily) {
+      return Container(
+        height: 120,
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(),
+      );
+    }
+    final forecast = provider.dailyForecast;
+    if (forecast == null || forecast.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: const [
+            Icon(Icons.info_outline, color: Colors.blue),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text('Selecciona ubicaciA3n para ver pronA3stico extendido'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'PronA3stico 7 dA-as',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 140,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemBuilder: (context, index) {
+              final day = forecast[index];
+              return Container(
+                width: 110,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      DateFormat('EEE', 'es').format(day.date).toUpperCase(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(day.icon, style: const TextStyle(fontSize: 28)),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${day.maxTemperature.round()}A� / ${day.minTemperature.round()}A�',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      day.description,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              );
+            },
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemCount: forecast.length,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTaskIntegrationCard(
+    BuildContext context,
+    WeatherData weatherData,
+  ) {
+    final taskProvider = context.watch<TaskProvider>();
+    final now = DateTime.now();
+    final todaysTasks = taskProvider.tasks
+        .where(
+          (t) =>
+              t.dueDate.year == now.year &&
+              t.dueDate.month == now.month &&
+              t.dueDate.day == now.day,
+        )
+        .toList();
+
+    String weatherAdvice;
+    final desc = weatherData.description.toLowerCase();
+    if (desc.contains('lluvia')) {
+      weatherAdvice = 'Lluvia prevista hoy, prioriza tareas bajo techo.';
+    } else if (weatherData.temperature > 30) {
+      weatherAdvice = 'Temperaturas altas, agenda labores fuertes temprano.';
+    } else if (weatherData.windSpeed > 20) {
+      weatherAdvice = 'Viento fuerte, evita fumigaciones y asegura insumos.';
+    } else {
+      weatherAdvice = 'Clima estable, ideal para completar pendientes.';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.task_alt, color: Colors.orange.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Clima + tareas',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(weatherAdvice, style: TextStyle(color: Colors.orange.shade900)),
+          const SizedBox(height: 12),
+          if (todaysTasks.isEmpty)
+            Text(
+              'No hay tareas programadas para hoy.',
+              style: TextStyle(color: Colors.grey.shade700),
+            )
+          else
+            Column(
+              children: todaysTasks.take(3).map((task) {
+                final dueLabel = DateFormat('HH:mm').format(task.dueDate);
+                final statusColor =
+                    task.status == 'completed' ? Colors.green : Colors.orange;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    task.status == 'completed'
+                        ? Icons.check_circle
+                        : Icons.schedule,
+                    color: statusColor,
+                  ),
+                  title: Text(task.title),
+                  subtitle: Text('Vence hoy a las $dueLabel'),
+                  trailing: Text(
+                    task.priority.toUpperCase(),
+                    style: TextStyle(
+                      color: task.priority == 'high'
+                          ? Colors.red
+                          : task.priority == 'medium'
+                              ? Colors.orange
+                              : Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeatherView(
+    BuildContext context,
+    WeatherData weatherData,
+    WeatherStateProvider weatherProvider,
+  ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -278,12 +648,11 @@ class _ClimateScreenState extends State<ClimateScreen> {
               ),
               RequirementStatusItem(
                 label: 'RF2 Mostrar pronostico 5-7 dias',
-                state: RequirementState.missing,
-                note: 'Actualmente muestra 1 dia',
+                state: RequirementState.completed,
               ),
               RequirementStatusItem(
                 label: 'RF3 Alertas de clima extremo',
-                state: RequirementState.missing,
+                state: RequirementState.completed,
               ),
               RequirementStatusItem(
                 label: 'RF4 Cambiar ubicacion manualmente',
@@ -291,19 +660,21 @@ class _ClimateScreenState extends State<ClimateScreen> {
               ),
               RequirementStatusItem(
                 label: 'RF5 Recomendaciones agricolas segun clima',
-                state: RequirementState.missing,
+                state: RequirementState.completed,
               ),
               RequirementStatusItem(
                 label: 'RF6 Integrar clima con tareas',
-                state: RequirementState.missing,
+                state: RequirementState.completed,
               ),
               RequirementStatusItem(
                 label: 'RNF1 Funcionar con mala conexion usando cache local',
-                state: RequirementState.missing,
+                state: RequirementState.completed,
+                note: 'Datos se guardan y cargan offline',
               ),
               RequirementStatusItem(
                 label: 'RNF2 Actualizaciones automaticas cada 30 min',
-                state: RequirementState.missing,
+                state: RequirementState.completed,
+                note: 'Refresco en background cada 30 min',
               ),
             ],
           ),
@@ -436,6 +807,20 @@ class _ClimateScreenState extends State<ClimateScreen> {
 
           const SizedBox(height: 24),
 
+          _buildExtremeAlertCard(
+            context,
+            weatherData,
+            weatherProvider.dailyForecast,
+          ),
+
+          const SizedBox(height: 16),
+
+          _buildWeeklyForecast(context, weatherProvider),
+
+          const SizedBox(height: 24),
+
+
+
           // Recomendaciones agrícolas
           Container(
             padding: const EdgeInsets.all(16),
@@ -476,11 +861,50 @@ class _ClimateScreenState extends State<ClimateScreen> {
                     fontFamily: 'NotoSans',
                   ),
                 ),
+                if (weatherProvider.dailyForecast != null &&
+                    weatherProvider.dailyForecast!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PrA3ximos 5 dA-as',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: weatherProvider.dailyForecast!
+                              .take(5)
+                              .map(
+                                (day) => Chip(
+                                  label: Text(
+                                    '${DateFormat('EEE', 'es').format(day.date)}: ${day.maxTemperature.round()}A� / ${day.minTemperature.round()}A�',
+                                  ),
+                                  avatar: Text(day.icon),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
 
           const SizedBox(height: 24),
+
+          _buildTaskIntegrationCard(context, weatherData),
+
+          const SizedBox(height: 24),
+
+
 
           // Botón para cambiar ubicación
           SizedBox(
