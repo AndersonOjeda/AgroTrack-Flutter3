@@ -61,6 +61,7 @@ dependencies:
   latlong2: ^0.9.1
   # Para obtener datos del clima
   dio: ^5.7.0
+  image: ^4.5.4
   # Para deep linking y manejo de URLs (temporalmente deshabilitado)
   # app_links: ^6.3.2
 

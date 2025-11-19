@@ -12,6 +12,8 @@ import 'map_weather_screen.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
 import '../services/weather_state_provider.dart';
+import '../providers/finance_provider.dart';
+import '../providers/task_provider.dart';
 import '../widgets/dashboard_weather_widget.dart';
 import '../widgets/requirement_status_card.dart';
 
@@ -813,6 +815,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                       ),
+                      // Vista general del clima del dA-a (RF1)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: Consumer<WeatherStateProvider>(
+                            builder: (context, weatherProvider, _) {
+                              return _buildWeatherSummary(context, weatherProvider);
+                            },
+                          ),
+                        ),
+                      ),
+
+                      // Alertas importantes (RF3)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: Consumer3<WeatherStateProvider, FinanceProvider, TaskProvider>(
+                            builder: (context, weatherProvider, financeProvider, taskProvider, _) {
+                              return _buildAlertsCard(
+                                context,
+                                weatherProvider,
+                                financeProvider,
+                                taskProvider,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+
+                      // Resumen rA?pido de finanzas (RF4)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: Consumer<FinanceProvider>(
+                            builder: (context, financeProvider, _) {
+                              return _buildFinanceSummary(context, financeProvider);
+                            },
+                          ),
+                        ),
+                      ),
+
+                      // Resumen de tareas del dA-a (RF5)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: Consumer<TaskProvider>(
+                            builder: (context, taskProvider, _) {
+                              return _buildTaskSummary(context, taskProvider);
+                            },
+                          ),
+                        ),
+                      ),
 
                       // Estado de requerimientos del dashboard
                       SliverToBoxAdapter(
@@ -824,7 +878,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             items: const [
                               RequirementStatusItem(
                                 label: 'RF1 Mostrar vista general del clima del dia',
-                                state: RequirementState.missing,
+                                state: RequirementState.completed,
                               ),
                               RequirementStatusItem(
                                 label: 'RF2 Accesos rapidos a Chatbot, Inventario, Finanzas, Tareas',
@@ -832,20 +886,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               RequirementStatusItem(
                                 label: 'RF3 Mostrar alertas importantes',
-                                state: RequirementState.missing,
+                                state: RequirementState.completed,
                               ),
                               RequirementStatusItem(
                                 label: 'RF4 Resumen rapido de finanzas',
-                                state: RequirementState.partial,
-                                note: 'Pendiente de datos en vivo',
+                                state: RequirementState.completed,
+                                note: 'Datos locales',
                               ),
                               RequirementStatusItem(
                                 label: 'RF5 Resumen de tareas del dia',
-                                state: RequirementState.missing,
+                                state: RequirementState.completed,
                               ),
                               RequirementStatusItem(
                                 label: 'RNF1 Cargar en menos de 2 segundos',
-                                state: RequirementState.missing,
+                                state: RequirementState.partial,
+                                note: 'Depende del dispositivo/red',
                               ),
                               RequirementStatusItem(
                                 label: 'RNF2 Diseno accesible con botones grandes',
@@ -987,4 +1042,404 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+
+  Widget _buildWeatherSummary(
+    BuildContext context,
+    WeatherStateProvider weatherProvider,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+    final data = weatherProvider.selectedWeatherData;
+
+    if (weatherProvider.isLoading) {
+      return _sectionCard(
+        context: context,
+        title: 'Clima del dA-a',
+        icon: Icons.wb_sunny_rounded,
+        child: const SizedBox(
+          height: 80,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (data == null) {
+      return _sectionCard(
+        context: context,
+        title: 'Clima del dA-a',
+        icon: Icons.wb_sunny_rounded,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Sin ubicaciA3n seleccionada.'),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MapWeatherScreen()),
+                );
+              },
+              icon: const Icon(Icons.map),
+              label: const Text('Elegir ubicaciA3n'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _sectionCard(
+      context: context,
+      title: 'Clima del dA-a',
+      icon: Icons.wb_sunny_rounded,
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                data.locationName,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                data.description,
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.water_drop, size: 16, color: colors.primary),
+                  const SizedBox(width: 4),
+                  Text('${data.humidity.round()}%'),
+                  const SizedBox(width: 12),
+                  Icon(Icons.air, size: 16, color: colors.secondary),
+                  const SizedBox(width: 4),
+                  Text('${data.windSpeed.round()} km/h'),
+                ],
+              ),
+            ],
+          ),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${data.temperature.round()}A�C',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colors.primary,
+                    ),
+              ),
+              Text(
+                '${(data.temperature * 9 / 5 + 32).round()}A�F',
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlertsCard(
+    BuildContext context,
+    WeatherStateProvider weatherProvider,
+    FinanceProvider financeProvider,
+    TaskProvider taskProvider,
+  ) {
+    final alerts = <_AlertItem>[];
+    final weather = weatherProvider.selectedWeatherData;
+
+    if (taskProvider.overdueCount > 0) {
+      alerts.add(_AlertItem(
+        icon: Icons.warning_amber_rounded,
+        color: Colors.red.shade600,
+        title: 'Tareas vencidas',
+        message: '${taskProvider.overdueCount} tareas necesitan atenciA3n hoy',
+      ));
+    }
+
+    if (financeProvider.balance < 0) {
+      alerts.add(_AlertItem(
+        icon: Icons.trending_down_rounded,
+        color: Colors.red.shade600,
+        title: 'Balance negativo',
+        message:
+            'Balance actual \$${financeProvider.balance.toStringAsFixed(0)}',
+      ));
+    }
+
+    if (weather != null) {
+      if (weather.temperature > 35) {
+        alerts.add(_AlertItem(
+          icon: Icons.heat_pump_rounded,
+          color: Colors.orange.shade700,
+          title: 'Calor extremo',
+          message: 'Temperatura alta, protege cultivos sensibles',
+        ));
+      } else if (weather.temperature < 5) {
+        alerts.add(_AlertItem(
+          icon: Icons.ac_unit_rounded,
+          color: Colors.blue.shade700,
+          title: 'FrA-o intenso',
+          message: 'Riesgo por bajas temperaturas',
+        ));
+      }
+
+      if (weather.humidity > 80) {
+        alerts.add(_AlertItem(
+          icon: Icons.cloud_queue_rounded,
+          color: Colors.purple.shade700,
+          title: 'Humedad alta',
+          message: 'Vigila enfermedades fA�ngicas',
+        ));
+      }
+    }
+
+    if (alerts.isEmpty) {
+      return _sectionCard(
+        context: context,
+        title: 'Alertas importantes',
+        icon: Icons.notifications_active_rounded,
+        child: Row(
+          children: const [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Sin alertas crA�ticas por el momento'),
+          ],
+        ),
+      );
+    }
+
+    return _sectionCard(
+      context: context,
+      title: 'Alertas importantes',
+      icon: Icons.notifications_active_rounded,
+      child: Column(
+        children: alerts
+            .map(
+              (a) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: a.color.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(a.icon, color: a.color, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            a.title,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            a.message,
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildFinanceSummary(
+    BuildContext context,
+    FinanceProvider financeProvider,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+    if (financeProvider.loading) {
+      return _sectionCard(
+        context: context,
+        title: 'Finanzas',
+        icon: Icons.account_balance_wallet_rounded,
+        child: const SizedBox(
+          height: 80,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    return _sectionCard(
+      context: context,
+      title: 'Finanzas',
+      icon: Icons.account_balance_wallet_rounded,
+      child: Row(
+        children: [
+          _miniStat(
+            context,
+            label: 'Ingresos',
+            value: '\$${financeProvider.totalIncome.toStringAsFixed(0)}',
+            color: Colors.green,
+          ),
+          _miniStat(
+            context,
+            label: 'Gastos',
+            value: '\$${financeProvider.totalExpense.toStringAsFixed(0)}',
+            color: Colors.red,
+          ),
+          _miniStat(
+            context,
+            label: 'Balance',
+            value: '\$${financeProvider.balance.toStringAsFixed(0)}',
+            color: financeProvider.balance >= 0 ? colors.primary : Colors.red,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskSummary(
+    BuildContext context,
+    TaskProvider taskProvider,
+  ) {
+    if (taskProvider.loading) {
+      return _sectionCard(
+        context: context,
+        title: 'Tareas del dA-a',
+        icon: Icons.checklist_rounded,
+        child: const SizedBox(
+          height: 80,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    return _sectionCard(
+      context: context,
+      title: 'Tareas del dA-a',
+      icon: Icons.checklist_rounded,
+      child: Row(
+        children: [
+          _miniStat(
+            context,
+            label: 'Pendientes',
+            value: '${taskProvider.pendingCount}',
+            color: Colors.orange,
+          ),
+          _miniStat(
+            context,
+            label: 'Completadas',
+            value: '${taskProvider.completedCount}',
+            color: Colors.green,
+          ),
+          _miniStat(
+            context,
+            label: 'Vencidas',
+            value: '${taskProvider.overdueCount}',
+            color: Colors.red,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniStat(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(color: Colors.grey.shade700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionCard({
+    required BuildContext context,
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: colors.primary),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _AlertItem {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String message;
+
+  _AlertItem({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.message,
+  });
 }
