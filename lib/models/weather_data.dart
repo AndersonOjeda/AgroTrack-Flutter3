@@ -137,34 +137,62 @@ class WeatherData {
   static String getWeatherIcon(int code) {
     switch (code) {
       case 0:
-        return '☀️';
+        return '\u2600\ufe0f';
       case 1:
       case 2:
       case 3:
-        return '⛅';
+        return '\u26c5';
       case 45:
       case 48:
-        return '🌫️';
+        return '\U0001F32B\ufe0f';
       case 51:
       case 53:
       case 55:
-        return '🌦️';
+        return '\U0001F326\ufe0f';
       case 61:
       case 63:
       case 65:
-        return '🌧️';
+        return '\U0001F327\ufe0f';
       case 71:
       case 73:
       case 75:
-        return '❄️';
+        return '\U0001F328\ufe0f';
       case 80:
       case 81:
       case 82:
-        return '🌦️';
+        return '\U0001F327\ufe0f';
       case 95:
-        return '⛈️';
+        return '\u26c8\ufe0f';
       default:
-        return '❓';
+        return '\u2601\ufe0f';
     }
+  }
+
+  Map<String, dynamic> toCacheJson() {
+    return {
+      'temperature': temperature,
+      'humidity': humidity,
+      'windSpeed': windSpeed,
+      'description': description,
+      'icon': icon,
+      'latitude': latitude,
+      'longitude': longitude,
+      'locationName': locationName,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
+
+  factory WeatherData.fromCache(Map<String, dynamic> json) {
+    return WeatherData(
+      temperature: (json['temperature'] as num).toDouble(),
+      humidity: (json['humidity'] as num).toDouble(),
+      windSpeed: (json['windSpeed'] as num).toDouble(),
+      description: json['description'] as String,
+      icon: json['icon'] as String,
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+      locationName: json['locationName'] as String,
+      timestamp: DateTime.tryParse(json['timestamp'] as String? ?? '') ?? DateTime.now(),
+    );
   }
 }
