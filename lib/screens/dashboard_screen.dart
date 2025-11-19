@@ -868,53 +868,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
 
-                      // Estado de requerimientos del dashboard
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                          child: RequirementStatusCard(
-                            title: 'Estado de requerimientos del dashboard',
-                            icon: Icons.dashboard_customize_rounded,
-                            items: const [
-                              RequirementStatusItem(
-                                label: 'RF1 Mostrar vista general del clima del dia',
-                                state: RequirementState.completed,
-                              ),
-                              RequirementStatusItem(
-                                label: 'RF2 Accesos rapidos a Chatbot, Inventario, Finanzas, Tareas',
-                                state: RequirementState.completed,
-                              ),
-                              RequirementStatusItem(
-                                label: 'RF3 Mostrar alertas importantes',
-                                state: RequirementState.completed,
-                              ),
-                              RequirementStatusItem(
-                                label: 'RF4 Resumen rapido de finanzas',
-                                state: RequirementState.completed,
-                                note: 'Datos locales',
-                              ),
-                              RequirementStatusItem(
-                                label: 'RF5 Resumen de tareas del dia',
-                                state: RequirementState.completed,
-                              ),
-                              RequirementStatusItem(
-                                label: 'RNF1 Cargar en menos de 2 segundos',
-                                state: RequirementState.partial,
-                                note: 'Depende del dispositivo/red',
-                              ),
-                              RequirementStatusItem(
-                                label: 'RNF2 Diseno accesible con botones grandes',
-                                state: RequirementState.completed,
-                              ),
-                              RequirementStatusItem(
-                                label: 'RNF3 Actualizacion automatica via streams de Supabase',
-                                state: RequirementState.missing,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      
                       // Espaciado
                       const SliverToBoxAdapter(
                         child: SizedBox(height: 16),

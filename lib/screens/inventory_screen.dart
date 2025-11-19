@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import '../models/inventory_item_model.dart';
 import '../services/inventory_service.dart';
 import '../services/inventory_debug_service.dart';
-import '../widgets/requirement_status_card.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -382,6 +381,165 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+  Widget _buildInventoryContextCard() {
+    final colors = Theme.of(context).colorScheme;
+    final totalItems = _inventoryItems.length;
+    final categoriesCount =
+        _inventoryItems.map((item) => item.categoria).toSet().length;
+    final lowStock = _lowStockItems.length;
+    final expiring = _expiringSoonItems.length;
+    final alerts = lowStock + expiring;
+    final pendingSync =
+        _inventoryItems.where((item) => item.needsSync).length;
+    final totalValue = _inventoryItems.fold<double>(
+      0,
+      (sum, item) => sum + item.valorTotalCalculado,
+    );
+    final lastUpdate = _inventoryItems
+        .map((item) => item.updatedAt ?? item.createdAt)
+        .whereType<DateTime>()
+        .fold<DateTime?>(null, (prev, current) {
+      if (prev == null || current.isAfter(prev)) {
+        return current;
+      }
+      return prev;
+    });
+
+    final valueFormatter = NumberFormat.compactCurrency(
+      symbol: '\$',
+      locale: 'es_CO',
+      decimalDigits: 0,
+    );
+    final totalValueText =
+        totalValue > 0 ? valueFormatter.format(totalValue) : 'Sin registro';
+    final summaryText = totalItems == 0
+        ? 'Aun no registras productos. Agrega insumos o cosechas para visualizar estadisticas.'
+        : 'Inventario con $totalItems productos en $categoriesCount categorias activas. '
+            '${alerts > 0 ? 'Hay $alerts alertas (stock bajo $lowStock, por vencer $expiring).' : 'Sin alertas criticas.'} '
+            '${pendingSync > 0 ? '$pendingSync cambios pendientes por sincronizar con Supabase.' : 'Supabase sincronizado.'}';
+    final lastUpdateText = lastUpdate != null
+        ? 'Ultima actualizacion: ${DateFormat('dd MMM HH:mm').format(lastUpdate)}'
+        : 'Sin registros de actualizacion.';
+    final alertsColor =
+        alerts > 0 ? Colors.orange.shade700 : Colors.green.shade700;
+    final syncColor =
+        pendingSync > 0 ? Colors.blueGrey : Colors.green.shade700;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colors.outlineVariant.withOpacity(0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: colors.primary.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.analytics_outlined,
+                  color: colors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Contexto del inventario',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            summaryText,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey.shade800,
+                ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _InventoryContextMetric(
+                  icon: Icons.inventory_2_rounded,
+                  label: 'Productos registrados',
+                  value: '$totalItems',
+                  helper: categoriesCount > 0
+                      ? '$categoriesCount categorias activas'
+                      : 'Sin categorias',
+                  color: colors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _InventoryContextMetric(
+                  icon: Icons.payments_outlined,
+                  label: 'Valor estimado',
+                  value: totalValueText,
+                  helper: 'Stock calculado',
+                  color: colors.secondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _InventoryContextMetric(
+                  icon: Icons.warning_rounded,
+                  label: 'Alertas activas',
+                  value: '$alerts',
+                  helper: 'Bajo: $lowStock | Vence: $expiring',
+                  color: alertsColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _InventoryContextMetric(
+                  icon: Icons.cloud_sync_outlined,
+                  label: 'Sincronizacion',
+                  value: pendingSync == 0 ? 'Al dia' : '$pendingSync pendientes',
+                  helper: pendingSync == 0
+                      ? 'Supabase sincronizado'
+                      : 'Enviar cambios pendientes',
+                  color: syncColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            lastUpdateText,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showAddItemDialog() async {
     final result = await showDialog<InventoryItemModel>(
       context: context,
@@ -745,44 +903,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ),
       body: Column(
         children: [
-          RequirementStatusCard(
-            title: 'Requerimientos pantalla Inventario',
-            icon: Icons.inventory_2_rounded,
-            items: const [
-              RequirementStatusItem(
-                label: 'RF1 Registrar insumos',
-                state: RequirementState.completed,
-              ),
-              RequirementStatusItem(
-                label: 'RF2 Registrar productos cosechados',
-                state: RequirementState.completed,
-              ),
-              RequirementStatusItem(
-                label: 'RF3 Editar, eliminar y buscar articulos',
-                state: RequirementState.completed,
-              ),
-              RequirementStatusItem(
-                label: 'RF4 Alertas de insumos bajos',
-                state: RequirementState.completed,
-              ),
-              RequirementStatusItem(
-                label: 'RF5 Registrar entradas y salidas',
-                state: RequirementState.completed,
-              ),
-              RequirementStatusItem(
-                label: 'RF6 Recomendaciones segun inventario',
-                state: RequirementState.completed,
-              ),
-              RequirementStatusItem(
-                label: 'RNF1 Manejo rapido con coleccion grande',
-                state: RequirementState.completed,
-                note: 'Lista virtualizada + pull-to-refresh',
-              ),
-              RequirementStatusItem(
-                label: 'RNF2 Sincronizacion automatica con Supabase',
-                state: RequirementState.partial,
-              ),
-            ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: _buildInventoryContextCard(),
           ),
 
           const SizedBox(height: 12),
@@ -1410,6 +1533,69 @@ class _EditItemDialogState extends State<_EditItemDialog> {
           child: const Text('Actualizar'),
         ),
       ],
+    );
+  }
+}
+
+class _InventoryContextMetric extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final String helper;
+  final Color color;
+
+  const _InventoryContextMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.helper,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            helper,
+            style: textTheme.bodySmall?.copyWith(
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
