@@ -1012,7 +1012,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '  ?? ',
+                                    '${item.cantidad} ${item.unidadMedida} • ${item.categoria}',
                                     style: const TextStyle(fontFamily: 'NotoSans'),
                                   ),
                                   const SizedBox(height: 4),
@@ -1045,7 +1045,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                 children: [
                                   if (item.precioUnitario != null)
                                     Text(
-                                      '\{item.valorTotalCalculado.toStringAsFixed(0)}',
+                                      '\$${item.valorTotalCalculado.toStringAsFixed(0)}',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
@@ -1069,7 +1069,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       ),
                     ),
             ),
-          ),
           ),
         ],
       ),
