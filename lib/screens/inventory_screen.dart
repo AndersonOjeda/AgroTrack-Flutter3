@@ -19,14 +19,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
   bool _showLowStock = false;
   bool _showExpiring = false;
   final ScrollController _listController = ScrollController();
-  static const Widget _listPrototype = Card(
-    margin: EdgeInsets.only(bottom: 12),
-    child: ListTile(
-      contentPadding: EdgeInsets.all(16),
-      title: SizedBox(height: 16),
-      subtitle: SizedBox(height: 14),
-    ),
-  );
 
   final InventoryService _inventoryService = InventoryService();
 
@@ -901,299 +893,306 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: _buildInventoryContextCard(),
+
+      body: Scrollbar(
+        controller: _listController,
+        thumbVisibility: _filteredItems.isNotEmpty,
+        child: RefreshIndicator(
+          onRefresh: _refreshInventory,
+          child: CustomScrollView(
+            controller: _listController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: _buildInventoryContextCard(),
+                ),
+              ),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 12),
+              ),
+              SliverToBoxAdapter(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  color: Colors.grey[50],
+                  child: Column(
+                    children: [
+                      TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Buscar productos...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        onChanged: (value) {
+                          _searchQuery = value;
+                          _applyFilters();
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _selectedCategory,
+                              decoration: InputDecoration(
+                                labelText: 'Categoría',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              items: _categories.map((category) {
+                                return DropdownMenuItem(
+                                  value: category,
+                                  child: Text(category),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                _selectedCategory = value!;
+                                _applyFilters();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Checkbox(
+                                    value: _showLowStock,
+                                    onChanged: (value) {
+                                      _showLowStock = value!;
+                                      _applyFilters();
+                                    },
+                                  ),
+                                  const Text(
+                                    'Stock bajo',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Checkbox(
+                                    value: _showExpiring,
+                                    onChanged: (value) {
+                                      _showExpiring = value!;
+                                      _applyFilters();
+                                    },
+                                  ),
+                                  const Text(
+                                    'Por vencer',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _StatCard(
+                        title: 'Total Items',
+                        value: '${_inventoryItems.length}',
+                        color: Colors.blue,
+                        icon: Icons.inventory,
+                      ),
+                      _StatCard(
+                        title: 'Stock Bajo',
+                        value:
+                            '${_inventoryItems.where((item) => item.isStockBajo).length}',
+                        color: Colors.orange,
+                        icon: Icons.warning,
+                      ),
+                      _StatCard(
+                        title: 'Por Vencer',
+                        value:
+                            '${_inventoryItems.where((item) => item.isPorVencer || item.isVencido).length}',
+                        color: Colors.red,
+                        icon: Icons.schedule,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (hasAlerts)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: _buildAlertsCard(),
+                  ),
+                ),
+              if (recommendations.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: _buildRecommendationsCard(recommendations),
+                  ),
+                ),
+              if (_filteredItems.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _buildEmptyInventoryState(),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final item = _filteredItems[index];
+                        return _buildInventoryListTile(item);
+                      },
+                      childCount: _filteredItems.length,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+
+    );
+  }
+
+  Widget _buildEmptyInventoryState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No se encontraron productos',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey[600],
+                fontFamily: 'NotoSans',
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Agrega productos a tu inventario',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+                fontFamily: 'NotoSans',
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInventoryListTile(InventoryItemModel item) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: CircleAvatar(
+          backgroundColor: _getStatusColor(item).withValues(alpha: 0.1),
+          child: Icon(
+            _getCategoryIcon(item.categoria),
+            color: _getStatusColor(item),
           ),
-
-          const SizedBox(height: 12),
-
-          // Barra de búsqueda y filtros
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.grey[50],
-            child: Column(
-              children: [
-                // Barra de búsqueda
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Buscar productos...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                  onChanged: (value) {
-                    _searchQuery = value;
-                    _applyFilters();
-                  },
-                ),
-                const SizedBox(height: 12),
-
-                // Filtros
-                Row(
-                  children: [
-                    // Selector de categoría
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _selectedCategory,
-                        decoration: InputDecoration(
-                          labelText: 'Categoría',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                        ),
-                        items: _categories.map((category) {
-                          return DropdownMenuItem(
-                            value: category,
-                            child: Text(category),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          _selectedCategory = value!;
-                          _applyFilters();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Filtros adicionales
-                    Column(
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Checkbox(
-                              value: _showLowStock,
-                              onChanged: (value) {
-                                _showLowStock = value!;
-                                _applyFilters();
-                              },
-                            ),
-                            const Text(
-                              'Stock bajo',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Checkbox(
-                              value: _showExpiring,
-                              onChanged: (value) {
-                                _showExpiring = value!;
-                                _applyFilters();
-                              },
-                            ),
-                            const Text(
-                              'Por vencer',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        ),
+        title: Text(
+          item.nombre,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontFamily: 'NotoSans',
           ),
-
-          // Resumen estadístico
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _StatCard(
-                  title: 'Total Items',
-                  value: '${_inventoryItems.length}',
-                  color: Colors.blue,
-                  icon: Icons.inventory,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${item.cantidad} ${item.unidadMedida} · ${item.categoria}',
+              style: const TextStyle(fontFamily: 'NotoSans'),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 2,
+              ),
+              decoration: BoxDecoration(
+                color: _getStatusColor(item).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _getStatusText(item),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _getStatusColor(item),
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'NotoSans',
                 ),
-                _StatCard(
-                  title: 'Stock Bajo',
-                  value:
-                      '${_inventoryItems.where((item) => item.isStockBajo).length}',
-                  color: Colors.orange,
-                  icon: Icons.warning,
+              ),
+            ),
+          ],
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (item.precioUnitario != null)
+              Text(
+                '\$${item.valorTotalCalculado.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  fontFamily: 'NotoSans',
                 ),
-                _StatCard(
-                  title: 'Por Vencer',
-                  value:
-                      '${_inventoryItems.where((item) => item.isPorVencer || item.isVencido).length}',
-                  color: Colors.red,
-                  icon: Icons.schedule,
-                ),
-              ],
+              ),
+            Text(
+              item.ubicacionAlmacen ?? 'Sin ubicación',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontFamily: 'NotoSans',
+              ),
             ),
-          ),
-
-          if (hasAlerts)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: _buildAlertsCard(),
-            ),
-
-          if (recommendations.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: _buildRecommendationsCard(recommendations),
-            ),
-
-          // Lista de productos
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshInventory,
-              child: _filteredItems.isEmpty
-                  ? ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(32),
-                      children: [
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.inventory_2_outlined,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No se encontraron productos',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                                fontFamily: 'NotoSans',
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Agrega productos a tu inventario',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                                fontFamily: 'NotoSans',
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ],
-                    )
-                  : Scrollbar(
-                      controller: _listController,
-                      thumbVisibility: true,
-                      child: ListView.builder(
-                        controller: _listController,
-                        cacheExtent: 800,
-                        prototypeItem: _listPrototype,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _filteredItems.length,
-                        itemBuilder: (context, index) {
-                          final item = _filteredItems[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(16),
-                              leading: CircleAvatar(
-                                backgroundColor: _getStatusColor(
-                                  item,
-                                ).withValues(alpha: 0.1),
-                                child: Icon(
-                                  _getCategoryIcon(item.categoria),
-                                  color: _getStatusColor(item),
-                                ),
-                              ),
-                              title: Text(
-                                item.nombre,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'NotoSans',
-                                ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${item.cantidad} ${item.unidadMedida} • ${item.categoria}',
-                                    style: const TextStyle(fontFamily: 'NotoSans'),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _getStatusColor(
-                                        item,
-                                      ).withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      _getStatusText(item),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: _getStatusColor(item),
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'NotoSans',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              trailing: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  if (item.precioUnitario != null)
-                                    Text(
-                                      '\$${item.valorTotalCalculado.toStringAsFixed(0)}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        fontFamily: 'NotoSans',
-                                      ),
-                                    ),
-                                  Text(
-                                    item.ubicacionAlmacen ?? 'Sin ubicaciA3n',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                      fontFamily: 'NotoSans',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              onTap: () => _showItemDetails(item),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-            ),
-          ),
-        ],
+          ],
+        ),
+        onTap: () => _showItemDetails(item),
       ),
     );
   }
