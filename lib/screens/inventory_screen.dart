@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/inventory_item_model.dart';
 import '../services/inventory_service.dart';
 import '../services/inventory_debug_service.dart';
@@ -18,6 +19,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String _searchQuery = '';
   bool _showLowStock = false;
   bool _showExpiring = false;
+  final ScrollController _listController = ScrollController();
+  static const Widget _listPrototype = Card(
+    margin: EdgeInsets.only(bottom: 12),
+    child: ListTile(
+      contentPadding: EdgeInsets.all(16),
+      title: SizedBox(height: 16),
+      subtitle: SizedBox(height: 14),
+    ),
+  );
 
   final InventoryService _inventoryService = InventoryService();
 
@@ -36,6 +46,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
   void initState() {
     super.initState();
     _loadInventoryItems();
+  }
+
+  @override
+  void dispose() {
+    _listController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadInventoryItems() async {
@@ -163,6 +179,207 @@ class _InventoryScreenState extends State<InventoryScreen> {
         return categoryMatch && searchMatch && lowStockMatch && expiringMatch;
       }).toList();
     });
+  }
+
+  Future<void> _refreshInventory() async {
+    await _loadInventoryItems();
+  }
+
+  List<InventoryItemModel> get _lowStockItems =>
+      _inventoryItems.where((item) => item.isStockBajo).toList();
+
+  List<InventoryItemModel> get _expiringSoonItems => _inventoryItems
+      .where((item) => item.isPorVencer || item.isVencido)
+      .toList();
+
+  bool get _hasAlerts =>
+      _lowStockItems.isNotEmpty || _expiringSoonItems.isNotEmpty;
+
+  List<String> _generateSmartRecommendations() {
+    final recs = <String>[];
+    final low = _lowStockItems;
+    if (low.isNotEmpty) {
+      final names = low.take(3).map((e) => e.nombre).join(', ');
+      recs.add(
+        'Reponer $names (${low.length} referencias debajo del mA�nimo).',
+      );
+    }
+
+    final expiring = _expiringSoonItems;
+    if (expiring.isNotEmpty) {
+      final soon = expiring
+          .take(3)
+          .map(
+            (e) =>
+                '${e.nombre} (${e.fechaVencimiento != null ? DateFormat('dd MMM').format(e.fechaVencimiento!) : 'sin fecha'})',
+          )
+          .join(', ');
+      recs.add('Utilizar o rotar cuanto antes: $soon.');
+    }
+
+    final Map<String, double> categoryTotals = {};
+    for (final item in _inventoryItems) {
+      categoryTotals[item.categoria] =
+          (categoryTotals[item.categoria] ?? 0) + item.cantidad;
+    }
+    if (categoryTotals.isNotEmpty) {
+      final sorted = categoryTotals.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      final top = sorted.first;
+      recs.add(
+        'La categorA-a con mayor stock es ${top.key}. EvalA-a ventas o redistribuciA3n.',
+      );
+    }
+
+    final withoutLocation = _inventoryItems
+        .where((item) => (item.ubicacionAlmacen ?? '').isEmpty);
+    if (withoutLocation.isNotEmpty) {
+      recs.add(
+        '${withoutLocation.length} artAculos sin ubicaciA3n asignada: etiqueta para evitar pA�rdidas.',
+      );
+    }
+
+    if (recs.isEmpty) {
+      recs.add('Inventario equilibrado: mantAcn registros y sincroniza con Supabase.');
+    }
+
+    return recs;
+  }
+
+  Widget _buildAlertsCard() {
+    final low = _lowStockItems;
+    final expiring = _expiringSoonItems;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Alertas de inventario',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange.shade900,
+                    ),
+              ),
+            ],
+          ),
+          if (low.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Stock bajo (${low.length})',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.orange.shade800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: low.take(4).map(
+                (item) {
+                  final min = item.cantidadMinima?.toStringAsFixed(0) ?? '-';
+                  return Chip(
+                    label: Text(
+                      '${item.nombre} (${item.cantidad}/${min})',
+                    ),
+                    avatar: const Icon(Icons.inventory, size: 16),
+                  );
+                },
+              ).toList(),
+            ),
+          ],
+          if (expiring.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'PrA3ximos a vencer (${expiring.length})',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.red.shade700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: expiring.take(3).map(
+                (item) {
+                  final label = item.fechaVencimiento != null
+                      ? DateFormat('dd MMM').format(item.fechaVencimiento!)
+                      : 'sin fecha';
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      '�?� ${item.nombre} (vence $label)',
+                      style: TextStyle(color: Colors.red.shade600),
+                    ),
+                  );
+                },
+              ).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendationsCard(List<String> recs) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb, color: Colors.blue.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Recomendaciones inteligentes',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.blue.shade900,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...recs.map(
+            (rec) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.check_circle, color: Colors.blue.shade600, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      rec,
+                      style: TextStyle(color: Colors.blue.shade800),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showAddItemDialog() async {
@@ -490,6 +707,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasAlerts = _hasAlerts;
+    final recommendations = _generateSmartRecommendations();
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -544,7 +763,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
               RequirementStatusItem(
                 label: 'RF4 Alertas de insumos bajos',
-                state: RequirementState.missing,
+                state: RequirementState.completed,
               ),
               RequirementStatusItem(
                 label: 'RF5 Registrar entradas y salidas',
@@ -552,12 +771,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
               RequirementStatusItem(
                 label: 'RF6 Recomendaciones segun inventario',
-                state: RequirementState.missing,
+                state: RequirementState.completed,
               ),
               RequirementStatusItem(
                 label: 'RNF1 Manejo rapido con coleccion grande',
-                state: RequirementState.missing,
-                note: 'Rendimiento normal',
+                state: RequirementState.completed,
+                note: 'Lista virtualizada + pull-to-refresh',
               ),
               RequirementStatusItem(
                 label: 'RNF2 Sincronizacion automatica con Supabase',
@@ -701,127 +920,156 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
           ),
 
+          if (hasAlerts)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: _buildAlertsCard(),
+            ),
+
+          if (recommendations.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: _buildRecommendationsCard(recommendations),
+            ),
+
           // Lista de productos
           Expanded(
-            child: _filteredItems.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+            child: RefreshIndicator(
+              onRefresh: _refreshInventory,
+              child: _filteredItems.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(32),
                       children: [
-                        Icon(
-                          Icons.inventory_2_outlined,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No se encontraron productos',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                            fontFamily: 'NotoSans',
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Agrega productos a tu inventario',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                            fontFamily: 'NotoSans',
-                          ),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No se encontraron productos',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey[600],
+                                fontFamily: 'NotoSans',
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Agrega productos a tu inventario',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[500],
+                                fontFamily: 'NotoSans',
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _filteredItems.length,
-                    itemBuilder: (context, index) {
-                      final item = _filteredItems[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          leading: CircleAvatar(
-                            backgroundColor: _getStatusColor(
-                              item,
-                            ).withValues(alpha: 0.1),
-                            child: Icon(
-                              _getCategoryIcon(item.categoria),
-                              color: _getStatusColor(item),
+                    )
+                  : Scrollbar(
+                      controller: _listController,
+                      thumbVisibility: true,
+                      child: ListView.builder(
+                        controller: _listController,
+                        cacheExtent: 800,
+                        prototypeItem: _listPrototype,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _filteredItems.length,
+                        itemBuilder: (context, index) {
+                          final item = _filteredItems[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                          title: Text(
-                            item.nombre,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'NotoSans',
-                            ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${item.cantidad} ${item.unidadMedida} • ${item.categoria}',
-                                style: const TextStyle(fontFamily: 'NotoSans'),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getStatusColor(
-                                    item,
-                                  ).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  _getStatusText(item),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: _getStatusColor(item),
-                                    fontWeight: FontWeight.w500,
-                                    fontFamily: 'NotoSans',
-                                  ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(16),
+                              leading: CircleAvatar(
+                                backgroundColor: _getStatusColor(
+                                  item,
+                                ).withValues(alpha: 0.1),
+                                child: Icon(
+                                  _getCategoryIcon(item.categoria),
+                                  color: _getStatusColor(item),
                                 ),
                               ),
-                            ],
-                          ),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              if (item.precioUnitario != null)
-                                Text(
-                                  '\$${item.valorTotalCalculado.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    fontFamily: 'NotoSans',
-                                  ),
-                                ),
-                              Text(
-                                item.ubicacionAlmacen ?? 'Sin ubicación',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
+                              title: Text(
+                                item.nombre,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
                                   fontFamily: 'NotoSans',
                                 ),
                               ),
-                            ],
-                          ),
-                          onTap: () => _showItemDetails(item),
-                        ),
-                      );
-                    },
-                  ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '  ?? ',
+                                    style: const TextStyle(fontFamily: 'NotoSans'),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _getStatusColor(
+                                        item,
+                                      ).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      _getStatusText(item),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: _getStatusColor(item),
+                                        fontWeight: FontWeight.w500,
+                                        fontFamily: 'NotoSans',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (item.precioUnitario != null)
+                                    Text(
+                                      '\{item.valorTotalCalculado.toStringAsFixed(0)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        fontFamily: 'NotoSans',
+                                      ),
+                                    ),
+                                  Text(
+                                    item.ubicacionAlmacen ?? 'Sin ubicaciA3n',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                      fontFamily: 'NotoSans',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              onTap: () => _showItemDetails(item),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+            ),
+          ),
           ),
         ],
       ),
